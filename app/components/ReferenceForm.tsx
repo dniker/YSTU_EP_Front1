@@ -329,10 +329,22 @@ export const ReferenceForm = ({ onClose }: { onClose: () => void }) => {
 				}
 
 				// Общая обработка ошибок
-				throw new Error(
-					errorData?.detail ||
-						`Ошибка ${response.status}: ${response.statusText}`
-				)
+				if (errorData?.detail) {
+					if (Array.isArray(errorData.detail)) {
+						const messages = errorData.detail.map((e: any) => e.msg).join(', ')
+						throw new Error(messages)
+					} else {
+						throw new Error(errorData.detail)
+					}
+				}
+
+				throw new Error(`Ошибка ${response.status}: ${response.statusText}`)
+
+				//old error handling:
+				// throw new Error(
+				// 	errorData?.detail ||
+				// 		`Ошибка ${response.status}: ${response.statusText}`
+				// )
 			}
 
 			const savedItem = await response.json()
