@@ -36,6 +36,7 @@ import {
 } from '@/app/types'
 
 const Home = () => {
+    const [hasStudyPlan, setHasStudyPlan] = useState(false);
 	const [currentDirection, setCurrentDirection] =
 		useState<DirectionData | null>(null)
 	const [educationalLevels, setEducationalLevels] = useState<
@@ -122,6 +123,7 @@ const Home = () => {
 		directionData: DirectionData
 		mapData: any
 	}) => {
+        setHasStudyPlan(true);
 		setCurrentDirection(data.directionData)
 		initializeTable(data.directionData.semesters)
 		loadFullMap(data.mapData)
@@ -303,6 +305,7 @@ const Home = () => {
 
 			<div className={mainContent['main-content']}>
 				<Sidebar
+                    hasStudyPlan={hasStudyPlan}
 					checkStudyPlan={checkStudyPlan}
 					disciplines={disciplines}
 					selectedDiscipline={selectedDiscipline}

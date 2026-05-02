@@ -8,6 +8,7 @@ interface SidebarProps {
     disciplines: any[];
     selectedDiscipline: any;
     handleDragStart: (discipline: any) => void;
+    hasStudyPlan: boolean;
     // handleTableDisciplineClick: (discipline: any) => void;
 }
 
@@ -16,6 +17,7 @@ export const Sidebar = ({
                             disciplines,
                             selectedDiscipline,
                             handleDragStart,
+                            hasStudyPlan,
                             // handleTableDisciplineClick,
                         }: SidebarProps) => {
     const [searchTerm, setSearchTerm] = useState("");
@@ -81,9 +83,14 @@ export const Sidebar = ({
                 className={sidebar["resize-handle"]}
                 onMouseDown={startResizing}
             />
-            <button className={sidebar.checkButton} onClick={checkStudyPlan}>
-                Проверить карту учебного плана на наличие ошибок
-            </button>
+            {hasStudyPlan && (
+                <button
+                    className={sidebar.checkButton}
+                    onClick={checkStudyPlan}
+                >
+                    Проверить карту учебного плана на наличие ошибок
+                </button>
+            )}
 
             <div className={sidebar.titleContainer}>
                 <div className={sidebar.disciplineListTitle}>Дисциплины</div>
