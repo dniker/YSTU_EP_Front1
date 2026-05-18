@@ -73,8 +73,26 @@ export const ErrorWindow = ({
 								<span className={errorWindow['invalid']}>Найдены ошибки</span>
 							)}
 						</div>
-
 						<div className={errorWindow['list']}>
+						  {validationResult.results
+							.filter((item) => item.severity !== 'warning')  // ← скрываем warning
+							.map((item, index) => (
+							  <div
+								key={index}
+								className={`${errorWindow['card']} ${
+								  item.severity === 'blocking'
+									? errorWindow['blocking']
+									: errorWindow['warning']
+								}`}
+							  >
+								<div className={errorWindow['card-header']}>
+								  {item.severity === 'blocking' ? 'Ошибка' : 'Предупреждение'}
+								</div>
+								<div className={errorWindow['card-message']}>{item.message}</div>
+							  </div>
+							))}
+						</div>
+						{/* <div className={errorWindow['list']}>
 							{validationResult.results.map((item, index) => (
 								<div
 									key={index}
@@ -93,7 +111,7 @@ export const ErrorWindow = ({
 									</div>
 								</div>
 							))}
-						</div>
+						</div> */}
 					</>
 				)}
 			</div>
