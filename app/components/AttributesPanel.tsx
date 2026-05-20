@@ -201,29 +201,67 @@ export const AttributesPanel = ({
 				</button>
 			</div>
 
-			<label>Вид контроля</label>
-			<select
-				value={selectedDiscipline?.examTypeId || ''}
-				onChange={e => {
-					const selectedId = Number(e.target.value)
-					const selectedType = controlTypes.find(t => t.id === selectedId)
-					const shortName = getShortExamType(selectedType?.name || '')
-					handleAttributeChange('examType', shortName || '')
-					handleAttributeChange('examTypeId', selectedType?.id || null)
-				}}
-				disabled={!selectedDiscipline || loadingControlTypes}
-			>
-				<option value=''>-- Не выбрано --</option>
-				{loadingControlTypes ? (
-					<option>Загрузка...</option>
-				) : (
-					controlTypes.map(type => (
-						<option key={type.id} value={type.id}>
-							{type.name}
-						</option>
-					))
-				)}
-			</select>
+			<label>Виды контроля</label>
+
+            <div>
+                {controlTypes.map(type => (
+                    <label
+                        key={type.id}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            marginBottom: '6px',
+                        }}
+                    >
+                        <input
+                            type='checkbox'
+                            checked={
+                                selectedDiscipline?.controlTypeIds?.includes(type.id) ||
+                                false
+                            }
+                            onChange={e => {
+                                if (!selectedDiscipline) return
+
+                                let updatedIds =
+                                    selectedDiscipline.controlTypeIds || []
+
+                                if (e.target.checked) {
+                                    updatedIds = [...updatedIds, type.id]
+                                } else {
+                                    updatedIds = updatedIds.filter(
+                                        id => id !== type.id
+                                    )
+                                }
+
+                                handleAttributeChange(
+                                    'controlTypeIds',
+                                    updatedIds
+                                )
+
+                                const shortNames = updatedIds
+                                    .map(id => {
+                                        const typeObj = controlTypes.find(
+                                            t => t.id === id
+                                        )
+
+                                        return getShortExamType(
+                                            typeObj?.name || ''
+                                        )
+                                    })
+                                    .join('/')
+
+                                handleAttributeChange(
+                                    'examType',
+                                    shortNames
+                                )
+                            }}
+                        />
+
+                        {type.name}
+                    </label>
+                ))}
+            </div>
 
 			<label>Курсовая работа</label>
 			<select

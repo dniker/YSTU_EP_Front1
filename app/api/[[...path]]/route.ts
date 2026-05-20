@@ -69,24 +69,42 @@ export async function POST(
 	console.log(`[API POST] ${url}`, body)
 
 	try {
-		const response = await fetch(url, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify(body),
-		})
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+        })
 
-		const data = await response.json()
-		console.log(`[API POST SUCCESS] ${url} (Status: ${response.status})`)
-		return NextResponse.json(data, { status: response.status })
-	} catch (error) {
-		console.error('[API POST ERROR]', url, error)
-		return NextResponse.json(
-			{ error: 'Failed to fetch from backend', details: String(error) },
-			{ status: 500 }
-		)
-	}
+        console.log('[API POST BODY]', body)
+
+        if (response.status === 204) {
+            console.log(
+                `[API POST SUCCESS] ${url} (204 No Content)`
+            )
+
+            return new NextResponse(null, {
+                status: 204,
+            })
+        }
+
+        const data = await response.json()
+
+        return NextResponse.json(data, {
+            status: response.status,
+        })
+    } catch (error) {
+        console.error('[API POST ERROR]', url, error)
+
+        return NextResponse.json(
+            {
+                error: 'Failed to fetch from backend',
+                details: String(error),
+            },
+            { status: 500 }
+        )
+    }
 }
 
 export async function PUT(

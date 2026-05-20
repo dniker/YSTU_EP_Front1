@@ -9,7 +9,7 @@ interface SaveMapModalProps {
     onClose: () => void;
     onSave: () => Promise<void>;
     onInfo: () => void;
-    isLoading: boolean;
+    isLoading: boolean;s
     error?: string | null;
 }
 

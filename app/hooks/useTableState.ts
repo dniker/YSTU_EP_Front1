@@ -39,8 +39,14 @@ export const useTableState = (initialColumns = 8) => {
             id: block.discipline.id,
             name: block.discipline.name,
             credits: block.credit_units,
-            examType: block.control_type?.name?.charAt(0) || "", // "Э" для "Экзамен"
-            examTypeId: block.control_type?.id || null,
+            controlTypeIds:
+                block.control_types?.map((t: any) => t.id) || [],
+            examType:
+                block.control_types
+                    ?.map((t: any) => t.name.charAt(0))
+                    .join('/') || '',
+            examTypeId:
+                block.control_types?.[0]?.id || null,
             hasCourseWork: block.has_course_work || false,
             hasPracticalWork: block.practice_hours > 0,
             department_id: block.discipline.department.id,
@@ -153,8 +159,14 @@ export const useTableState = (initialColumns = 8) => {
           id: block.discipline.id,
           name: block.discipline.name,
           credits: block.credit_units,
-          examType: block.control_type.name.charAt(0), // "Э" для "Экзамен"
-          examTypeId: block.control_type.id,
+          controlTypeIds:
+	          block.control_types?.map((t: any) => t.id) || [],
+          examType:
+              block.control_types
+                ?.map((t: any) => t.name.charAt(0))
+                .join('/') || '',
+          examTypeId:
+              block.control_types?.[0]?.id || null,
           hasCourseWork: false, // Можно добавить в API
           hasPracticalWork: block.practice_hours > 0,
           department_id: block.discipline.department.id,
