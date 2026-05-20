@@ -120,8 +120,8 @@ export const InitialModal = ({
 			setError('Форма обучения обязательна')
 			return
 		}
-		if (!formData.semester_count || formData.semester_count < 1) {
-			setError('Количество семестров должно быть положительным числом')
+		if (!formData.semester_count || formData.semester_count < 1 || formData.semester_count > 12) {
+			setError('Количество семестров должно являться целым числом в пределах от 1 до 12')
 			return
 		}
 

@@ -204,6 +204,19 @@ const Home = () => {
 	}
 
 	const checkStudyPlan = () => {
+		// Проверяем, загружена ли карта и есть ли в ней ядра
+		if (!rows || rows.length === 0) {
+			showAlert('Нет данных для проверки. Откройте или создайте учебный план.');
+			return;
+		}
+
+		// Проверяем, есть ли хотя бы одна дисциплина в строках
+		const hasDisciplines = rows.some(row => row.data.some(cell => cell.length > 0));
+
+		if (!hasDisciplines) {
+			showAlert('Нет данных для проверки. Добавьте дисциплины в учебный план.');
+			return;
+		}
 		fetch('http://localhost:8001/validations/validate-up', {
 			method: 'POST',
 			headers: {
