@@ -280,6 +280,40 @@ const Home = () => {
 		}
 	}
 
+	const checkNonActualDepartments = async (): Promise<string[]> => {
+		const deptToDiscs = new Map<number, Set<string>>()
+		for (const row of rows) {
+			for (const cell of row.data) {
+				for (const disc of cell) {
+					if (disc.department_id) {
+						if (!deptToDiscs.has(disc.department_id)) {
+							deptToDiscs.set(disc.department_id, new Set())
+						}
+						deptToDiscs.get(disc.department_id)!.add(disc.name)
+					}
+				}
+			}
+		}
+
+		const problematic: string[] = []
+		await Promise.all(
+			[...deptToDiscs.entries()].map(async ([deptId, discNames]) => {
+				try {
+					const res = await fetch(`http://localhost:8001/departments/${deptId}/`)
+					if (res.ok) {
+						const dept = await res.json()
+						if (!dept.is_actual) {
+							discNames.forEach(name => problematic.push(name))
+						}
+					}
+				} catch {
+					// если не удалось получить кафедру — пропускаем
+				}
+			})
+		)
+		return problematic
+	}
+
 	const handleSaveMapInfo = () => {
 		showAlert(
 			'Сохранение создает новую версию карты учебного плана для выбранного направления'
@@ -372,7 +406,10 @@ const Home = () => {
 									overflowX: 'auto',
 								}}
 							>
-								<CalendarPlansTable educationalPlanId={currentDirection.id} />
+								<CalendarPlansTable
+									educationalPlanId={currentDirection.id}
+									onBeforeCreate={checkNonActualDepartments}
+								/>
 							</div>
 						)}
 

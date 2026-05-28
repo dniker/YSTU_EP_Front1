@@ -7,9 +7,10 @@ import '../../styles/CalendarPlan.css';
 
 type Props = {
   educationalPlanId: number;
+  onBeforeCreate?: () => Promise<string[]>;
 };
 
-export function CalendarPlansTable({ educationalPlanId }: Props) {
+export function CalendarPlansTable({ educationalPlanId, onBeforeCreate }: Props) {
   const { plans, loading, error, createPlan, updatePlan, deletePlan } =
     useCalendarPlans(educationalPlanId);
 
@@ -27,7 +28,7 @@ export function CalendarPlansTable({ educationalPlanId }: Props) {
           Календарный учебный график
         </h3>
 
-      <CalendarPlanForm onSave={createPlan} />
+      <CalendarPlanForm onSave={createPlan} onBeforeCreate={onBeforeCreate} />
 
       {error && (
         <div style={{ 
