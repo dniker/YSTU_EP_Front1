@@ -4,7 +4,12 @@ import { useState } from 'react';
 import '../../styles/CalendarPlan.css';
 
 
-export function CalendarPlanForm({ onSave }: { onSave: (data: any) => void }) {
+interface CalendarPlanFormProps {
+  onSave: (data: any) => void;
+  onBeforeCreate?: () => Promise<string[]>;
+}
+
+export function CalendarPlanForm({ onSave, onBeforeCreate }: CalendarPlanFormProps) {
   const [title, setTitle] = useState('');
   const [year, setYear] = useState('');
   const [group, setGroup] = useState('');
@@ -18,6 +23,17 @@ export function CalendarPlanForm({ onSave }: { onSave: (data: any) => void }) {
     if (!title.trim() || !year.trim() || !group.trim() || !profile.trim() || !reg.trim()) {
       alert('Заполните все поля');
       return;
+    }
+
+    if (onBeforeCreate) {
+      const problematic = await onBeforeCreate();
+      if (problematic.length > 0) {
+        alert(
+          'Невозможно сформировать учебный план. Следующие дисциплины относятся к неактуальным кафедрам:\n\n' +
+          problematic.join('\n')
+        );
+        return;
+      }
     }
 
     setIsSubmitting(true);
