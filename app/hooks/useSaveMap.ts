@@ -75,12 +75,16 @@ export const useSaveMap = () => {
 				blocks.push({
 					discipline_id: discipline.id,
 					credit_units: discipline.credits,
-					control_type_ids: discipline.controlTypeIds || [],
+					control_type_id: discipline.controlTypeId,
 					lecture_hours: discipline.lectureHours,
 					practice_hours: discipline.practicalHours,
 					lab_hours: discipline.labHours,
 					semester_number: semesterIndex + 1,
+					has_course_project: discipline.hasCourseProject || false,
 					has_course_work: discipline.hasCourseWork || false,
+					has_rz: discipline.hasRZ || false,
+					has_rgr: discipline.hasRGR || false,
+					has_referat: discipline.hasReferat || false,
 					competencies: discipline.competenceCodes?.map(id => ({ id })) || [],
 				})
 			})

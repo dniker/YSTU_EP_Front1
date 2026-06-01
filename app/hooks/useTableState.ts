@@ -39,15 +39,18 @@ export const useTableState = (initialColumns = 8) => {
             id: block.discipline.id,
             name: block.discipline.name,
             credits: block.credit_units,
-            controlTypeIds:
-                block.control_types?.map((t: any) => t.id) || [],
+            controlTypeId: block.control_type_id ?? null,
             examType:
                 block.control_types
                     ?.map((t: any) => t.name.charAt(0))
                     .join('/') || '',
             examTypeId:
                 block.control_types?.[0]?.id || null,
+            hasCourseProject: block.has_course_project || false,
             hasCourseWork: block.has_course_work || false,
+            hasCourseRZ: block.has_rz || false,
+            hasCourseRGR: block.has_rgr || false,
+            hasCourseReferat: block.has__referat || false,
             hasPracticalWork: block.practice_hours > 0,
             department_id: block.discipline.department.id,
             department: block.discipline.department.short_name,
@@ -159,15 +162,18 @@ export const useTableState = (initialColumns = 8) => {
           id: block.discipline.id,
           name: block.discipline.name,
           credits: block.credit_units,
-          controlTypeIds:
-	          block.control_types?.map((t: any) => t.id) || [],
+          controlTypeId: block.control_type_id ?? null,
           examType:
               block.control_types
                 ?.map((t: any) => t.name.charAt(0))
                 .join('/') || '',
           examTypeId:
               block.control_types?.[0]?.id || null,
+          hasCourseProject: false,
           hasCourseWork: false, // Можно добавить в API
+          hasCourseRZ: false,
+          hasCourseRGR: false,
+          hasCourseReferat: false,
           hasPracticalWork: block.practice_hours > 0,
           department_id: block.discipline.department.id,
           department: block.discipline.department.short_name,

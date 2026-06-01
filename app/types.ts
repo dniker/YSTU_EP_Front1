@@ -7,8 +7,12 @@ export interface Discipline {
   credits: number;
   examType: string; // Будет хранить "Э", "З", "Д" и т.д.
   examTypeId: number | null; // Добавляем для хранения ID
-  controlTypeIds: number[]
+  controlTypeId: number | null;
+  hasCourseProject: boolean;
   hasCourseWork: boolean;
+  hasCourseRZ: boolean;
+  hasCourseRGR: boolean;
+  hasCourseReferat: boolean;
   hasPracticalWork: boolean;
   department_name: string;
   department_id: number;

@@ -201,67 +201,44 @@ export const AttributesPanel = ({
 				</button>
 			</div>
 
-			<label>Виды контроля</label>
+			<label>Вид контроля</label>
 
-            <div>
+            <select
+                value={selectedDiscipline?.controlTypeId ?? ''}
+                onChange={e => {
+                    const id = Number(e.target.value)
+
+                    handleAttributeChange('controlTypeId', id)
+
+                    const type = controlTypes.find(t => t.id === id)
+
+                    handleAttributeChange(
+                        'examType',
+                        getShortExamType(type?.name || '')
+                    )
+                }}
+            >
+                <option value=''>Выберите вид контроля</option>
+
                 {controlTypes.map(type => (
-                    <label
-                        key={type.id}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            marginBottom: '6px',
-                        }}
-                    >
-                        <input
-                            type='checkbox'
-                            checked={
-                                selectedDiscipline?.controlTypeIds?.includes(type.id) ||
-                                false
-                            }
-                            onChange={e => {
-                                if (!selectedDiscipline) return
-
-                                let updatedIds =
-                                    selectedDiscipline.controlTypeIds || []
-
-                                if (e.target.checked) {
-                                    updatedIds = [...updatedIds, type.id]
-                                } else {
-                                    updatedIds = updatedIds.filter(
-                                        id => id !== type.id
-                                    )
-                                }
-
-                                handleAttributeChange(
-                                    'controlTypeIds',
-                                    updatedIds
-                                )
-
-                                const shortNames = updatedIds
-                                    .map(id => {
-                                        const typeObj = controlTypes.find(
-                                            t => t.id === id
-                                        )
-
-                                        return getShortExamType(
-                                            typeObj?.name || ''
-                                        )
-                                    })
-                                    .join('/')
-
-                                handleAttributeChange(
-                                    'examType',
-                                    shortNames
-                                )
-                            }}
-                        />
-
+                    <option key={type.id} value={type.id}>
                         {type.name}
-                    </label>
+                    </option>
                 ))}
-            </div>
+            </select>
+
+			<label>Курсовой проект</label>
+			<select
+				value={selectedDiscipline?.hasCourseProject ? 'Да' : 'Нет'}
+				onChange={e => {
+					const hasCourseProject = e.target.value === 'Да'
+					handleAttributeChange('hasCourseProject', hasCourseProject)
+				}}
+				disabled={!selectedDiscipline}
+			>
+				<option value='Нет'>Нет</option>
+				<option value='Да'>Да</option>
+			</select>
 
 			<label>Курсовая работа</label>
 			<select
@@ -269,6 +246,45 @@ export const AttributesPanel = ({
 				onChange={e => {
 					const hasCourseWork = e.target.value === 'Да'
 					handleAttributeChange('hasCourseWork', hasCourseWork)
+				}}
+				disabled={!selectedDiscipline}
+			>
+				<option value='Нет'>Нет</option>
+				<option value='Да'>Да</option>
+			</select>
+
+			<label>РЗ</label>
+			<select
+				value={selectedDiscipline?.hasRZ ? 'Да' : 'Нет'}
+				onChange={e => {
+					const hasRZ = e.target.value === 'Да'
+					handleAttributeChange('hasRZ', hasRZ)
+				}}
+				disabled={!selectedDiscipline}
+			>
+				<option value='Нет'>Нет</option>
+				<option value='Да'>Да</option>
+			</select>
+
+			<label>РГР</label>
+			<select
+				value={selectedDiscipline?.hasRGR ? 'Да' : 'Нет'}
+				onChange={e => {
+					const hasRGR = e.target.value === 'Да'
+					handleAttributeChange('hasRGR', hasRGR)
+				}}
+				disabled={!selectedDiscipline}
+			>
+				<option value='Нет'>Нет</option>
+				<option value='Да'>Да</option>
+			</select>
+
+			<label>Реферат</label>
+			<select
+				value={selectedDiscipline?.hasReferat ? 'Да' : 'Нет'}
+				onChange={e => {
+					const hasReferat = e.target.value === 'Да'
+					handleAttributeChange('hasReferat', hasReferat)
 				}}
 				disabled={!selectedDiscipline}
 			>
