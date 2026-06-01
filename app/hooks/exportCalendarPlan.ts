@@ -1,55 +1,72 @@
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
+import { WEEK_AUTUMN, WEEK_SPRING, WEEK_COUNT, MAX_COURSES, generateWeekDateRanges } from '../common/CalendarPlanCommon';
 
-const WEEK_COUNT = 52;
 
-function generateWeekDateRanges(startDateStr: string): string[] {
-  const weekRanges: string[] = [];
-  
-  // Парсим дату правильно (игнорируя timezone issues)
-  const [year, month, day] = startDateStr.split('-').map(Number);
-  const firstDay = new Date(year, month - 1, day); // месяцы считаются с 0
-  const dayOfWeek = firstDay.getDay(); // 0 = воскресенье, 1 = понедельник, ..., 6 = суббота
-  
-  const formatDate = (date: Date): string => {
-    const d = date.getDate();
-    const m = date.toLocaleDateString('ru-RU', { month: 'short' });
-    return `${d} ${m}`;
-  };
+// Установить границы у клетки только на те стороны, которые указаны в style
+function combineBorderStyles(worksheet: any, cellAddress: any, style: any)
+{
+  let s;
+  if (!worksheet[cellAddress].s)
+  {
+    worksheet[cellAddress].s = {};
+  }
+  if (!worksheet[cellAddress].s.border)
+  {
+    worksheet[cellAddress].s.border = {};
+  }
+  s = worksheet[cellAddress].s;
 
-  const DAY_MS = 24 * 60 * 60 * 1000;
-  
-  // Если 1 число - суббота (6) или воскресенье (0), начинаем с понедельника
-  if (dayOfWeek === 0 || dayOfWeek === 6) {
-    // Пропускаем выходной день, начинаем с понедельника
-    const daysToMonday = dayOfWeek === 0 ? 1 : 2;
-    const firstMonday = new Date(firstDay.getTime() + daysToMonday * DAY_MS);
-    
-    // Все 52 недели - полные недели пн-вс
-    for (let i = 0; i < WEEK_COUNT; i++) {
-      const weekStart = new Date(firstMonday.getTime() + i * 7 * DAY_MS);
-      const weekEnd = new Date(firstMonday.getTime() + (i * 7 + 6) * DAY_MS);
-      weekRanges.push(`${formatDate(weekStart)}-${formatDate(weekEnd)}`);
-    }
-  } else {
-    // Будний день - начинаем с этого дня
-    // Первая неделя: от startDate до ближайшего воскресенья
-    const daysToNextSunday = 8 - dayOfWeek; // это количество дней включая воскресенье
-    const firstWeekEnd = new Date(firstDay.getTime() + (daysToNextSunday - 1) * DAY_MS);
-    
-    weekRanges.push(`${formatDate(firstDay)}-${formatDate(firstWeekEnd)}`);
-    
-    // Остальные 51 неделя - полные недели пн-вс
-    const firstMonday = new Date(firstDay.getTime() + daysToNextSunday * DAY_MS);
-    
-    for (let i = 0; i < WEEK_COUNT - 1; i++) {
-      const weekStart = new Date(firstMonday.getTime() + i * 7 * DAY_MS);
-      const weekEnd = new Date(firstMonday.getTime() + (i * 7 + 6) * DAY_MS);
-      weekRanges.push(`${formatDate(weekStart)}-${formatDate(weekEnd)}`);
-    }
+  for (let key of Object.keys(style.border))
+  {
+    s.border[key] = style.border[key];
   }
 
-  return weekRanges;
+  return s;
 }
+
+function combineAlignment(worksheet: any, cellAddress: any, alignment: any)
+{
+  let s;
+  if (!worksheet[cellAddress].s)
+  {
+    worksheet[cellAddress].s = {};
+  }
+  if (!worksheet[cellAddress].s.alignment)
+  {
+    worksheet[cellAddress].s.alignment = {};
+  }
+  s = worksheet[cellAddress].s;
+
+  for (let key of Object.keys(alignment.alignment))
+  {
+    s.alignment[key] = alignment.alignment[key];
+  }
+
+  return s;
+}
+
+function combineFont(worksheet: any, cellAddress: any, font: any)
+{
+  let s;
+  if (!worksheet[cellAddress].s)
+  {
+    worksheet[cellAddress].s = {};
+  }
+  if (!worksheet[cellAddress].s.font)
+  {
+    worksheet[cellAddress].s.font = {};
+  }
+  s = worksheet[cellAddress].s;
+
+  for (let key of Object.keys(font.font))
+  {
+    s.font[key] = font.font[key];
+  }
+
+  return s;
+}
+
+
 
 export function exportCalendarPlan(plan: any) {
   const data = plan.data;
@@ -60,37 +77,89 @@ export function exportCalendarPlan(plan: any) {
 
   // Генерируем даты для недель
   const startDate = data.start_date || `${data.academic_year}-09-01`;
-  const weekDateRanges = generateWeekDateRanges(startDate);
+  let next_academic_year = parseInt(data.academic_year) + 1;
+  const endDate = data.end_date || `${next_academic_year}-08-31`;
+  const weekDateRanges = generateWeekDateRanges(startDate, endDate);
 
   const rows: any[][] = [];
 
-  /** ---------- Заголовок документа ---------- */
+  /* ---------- Заголовок документа ---------- */
   rows.push(['КАЛЕНДАРНЫЙ УЧЕБНЫЙ ГРАФИК']);
   rows.push([`Название: ${data.title}`]);
   rows.push([`Учебный год: ${data.academic_year}`]);
   rows.push([`Группа: ${data.group}`]);
   rows.push([`Профиль: ${data.profile}`]);
   rows.push([`Регистрационный номер: ${data.reg_number}`]);
+  rows.push([`Дата начала обучения: ${startDate}`]);
+  rows.push([`Дата окончания обучения: ${endDate}`]);
   rows.push([]);
 
-  /** ---------- Заголовки таблицы ---------- */
+  let tableBeginRow = rows.length;
+  /* ---------- Заголовки таблицы ---------- */
   rows.push([
     'Курс',
-    ...weekDateRanges,
-    'О',
-    'В',
-    'Итого',
-    'Экз',
-    'Уч. практ.',
-    'Другие практ.',
-    'Преддипл.',
+    'Осенний семестр',
+    ...Array(WEEK_AUTUMN - 1).fill(''),
+    'Весенний семестр',
+    ...Array(WEEK_SPRING - 1).fill(''),
+    'Теоретическое обучение, включая сессии',
+    '',
+    '',
+    'Экзаменационные сессии',
+    'Учебная практика',
+    'Другие практики',
+    'Преддипломная практика',
     'НИР',
-    'ГИА',
+    'Гос. Итог. Атт.',
     'Каникулы',
-    'Всего',
+    'Всего'
+  ]);
+  rows.push([
+    '',
+    ...weekDateRanges,
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    ''
   ]);
 
-  /** ---------- Итоги ---------- */
+  let numbersWeekAutumn = new Array(WEEK_AUTUMN);
+  for (let i = 0; i < WEEK_AUTUMN; i++)
+  {
+    numbersWeekAutumn[i] = i + 1;
+  }
+
+  let numbersWeekSpring = new Array(WEEK_SPRING);
+  for (let i = 0; i < WEEK_SPRING; i++)
+  {
+    numbersWeekSpring[i] = i + 1;
+  }
+
+  rows.push([
+    '',
+    ...numbersWeekAutumn,
+    ...numbersWeekSpring,
+    'О',
+    'В',
+    '∑',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    ''
+  ]);
+
+  /* ---------- Итоги ---------- */
   const totals = {
     theoryAutumn: 0,
     theorySpring: 0,
@@ -105,7 +174,7 @@ export function exportCalendarPlan(plan: any) {
     total: 0,
   };
 
-  /** ---------- Строки курсов ---------- */
+  /* ---------- Строки курсов ---------- */
   data.courses.forEach((course: any) => {
     const weeks = course.weeks ?? Array(WEEK_COUNT).fill('');
 
@@ -161,9 +230,9 @@ export function exportCalendarPlan(plan: any) {
     totals.total += total;
   });
 
-  /** ---------- Итоговая строка ---------- */
+  /* ---------- Итоговая строка ---------- */
   rows.push([
-    'Итого',
+    '',
     ...Array(WEEK_COUNT).fill(''),
     totals.theoryAutumn,
     totals.theorySpring,
@@ -178,10 +247,10 @@ export function exportCalendarPlan(plan: any) {
     totals.total,
   ]);
 
-  /** ---------- Пустая строка ---------- */
+  /* ---------- Пустая строка ---------- */
   rows.push([]);
 
-  /** ---------- Легенда ---------- */
+  /* ---------- Легенда ---------- */
   rows.push(['Условные обозначения:']);
   rows.push(['С — экзаменационная сессия']);
   rows.push(['У — учебная практика']);
@@ -192,10 +261,298 @@ export function exportCalendarPlan(plan: any) {
   rows.push(['Н — НИР']);
   rows.push(['(пусто) — теоретическое обучение']);
 
-  /** ---------- Excel ---------- */
-  const worksheet = XLSX.utils.aoa_to_sheet(rows);
+  /* ---------- Excel ---------- */
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  let tableSpanHorizontal = 1 + WEEK_COUNT + 11;
+  let tableSpanVertical = 3 + data.courses.length + 1;
+  let bottomTotalColumn = tableSpanHorizontal - 11;
+  let coursesCount = data.courses.length;
+  let R, C;
+
+  /* --- Изменение ширины колонок --- */
+
+  if(!ws["!cols"]) ws["!cols"] = [];
+  for (C = 0; C < tableSpanHorizontal; C++) {
+    ws["!cols"][C] = {wch: 2.2};
+  }
+  ws["!cols"][bottomTotalColumn + 0] = {wch: 3.2};
+  ws["!cols"][bottomTotalColumn + 1] = {wch: 3.2};
+  ws["!cols"][bottomTotalColumn + 2] = {wch: 3.2};
+  ws["!cols"][tableSpanHorizontal - 1] = {wch: 3.2};
+
+  /* --- Изменение высоты строк --- */
+
+  if(!ws["!rows"]) ws["!rows"] = [];
+  ws["!rows"][tableBeginRow + 1] = {hpx: 100};
+
+  /* --- Изменение выравнивания --- */
+
+  let horizontalCenterAlignment = {
+    alignment: {
+      horizontal: 'center',
+      wrapText: true
+    }
+  };
+  for (R = tableBeginRow; R < tableBeginRow + tableSpanVertical - 1; R++) {
+    for (C = 0; C < tableSpanHorizontal; C++) {
+      const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+      ws[cell_address].s = combineAlignment(ws, cell_address, horizontalCenterAlignment);
+    }
+  }
+
+  R = tableBeginRow + tableSpanVertical - 1;
+  for (C = bottomTotalColumn; C < tableSpanHorizontal; C++) {
+    const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+    ws[cell_address].s = combineAlignment(ws, cell_address, horizontalCenterAlignment);
+  }
+
+  let verticalCenterAlignment = {
+    alignment: {
+      vertical: 'center',
+      wrapText: true
+    }
+  };
+
+  R = tableBeginRow;
+  C = 0;
+  {
+    const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+    ws[cell_address].s = combineAlignment(ws, cell_address, verticalCenterAlignment);
+  }
+  for (C = WEEK_COUNT + 1; C < tableSpanHorizontal; C++)
+  {
+    const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+    ws[cell_address].s = combineAlignment(ws, cell_address, verticalCenterAlignment);
+  }
+
+  R = tableBeginRow + 1;
+  for (C = 1; C < WEEK_COUNT + 1; C++)
+  {
+    const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+    ws[cell_address].s = combineAlignment(ws, cell_address, verticalCenterAlignment);
+  }
+
+  /* --- Поворот текста --- */
+
+  let alignmentRotate90Degrees = {
+    alignment: {
+      textRotation: 90
+    }
+  }
+
+  R = tableBeginRow;
+  C = 0;
+  {
+    const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+    ws[cell_address].s = combineAlignment(ws, cell_address, alignmentRotate90Degrees);
+  }
+  for (C = WEEK_COUNT + 1; C < tableSpanHorizontal; C++)
+  {
+    const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+    ws[cell_address].s = combineAlignment(ws, cell_address, alignmentRotate90Degrees);
+  }
+
+  R = tableBeginRow + 1;
+  for (C = 1; C < WEEK_COUNT + 1; C++)
+  {
+    const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+    ws[cell_address].s = combineAlignment(ws, cell_address, alignmentRotate90Degrees);
+  }
+
+  /* --- Изменение фонта --- */
+  let smallerFont = {
+    font: {
+      sz: 9
+    }
+  };
+
+  R = tableBeginRow;
+  C = bottomTotalColumn + 3;
+  {
+    const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+    ws[cell_address].s = combineFont(ws, cell_address, smallerFont);
+  }
+  C = bottomTotalColumn + 6;
+  {
+    const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+    ws[cell_address].s = combineFont(ws, cell_address, smallerFont);
+  }
+
+  /* ---- Объединение ячеек --- **/
+  // Массив диапазонов, которые нужно объединить
+  // [1, 2, 3, 4],
+  // 1, 2 - начальная клетка, строка 2, колонка 3 (индексы с 0),
+  // 3, 4 - конечная клетка, строка 4, колонка 5
+  // Координаты относительно первой ячейки таблицы - tableBeginRow, 0
+  let merge = [
+    [0, 0, 2, 0],
+    [0, 1, 0, WEEK_AUTUMN],
+    [0, WEEK_AUTUMN + 1, 0, WEEK_COUNT],
+    [0, WEEK_COUNT + 1, 1, WEEK_COUNT + 3],
+    [0, 4 + WEEK_COUNT, 2, 4 + WEEK_COUNT],
+    [0, 5 + WEEK_COUNT, 2, 5 + WEEK_COUNT],
+    [0, 6 + WEEK_COUNT, 2, 6 + WEEK_COUNT],
+    [0, 7 + WEEK_COUNT, 2, 7 + WEEK_COUNT],
+    [0, 8 + WEEK_COUNT, 2, 8 + WEEK_COUNT],
+    [0, 9 + WEEK_COUNT, 2, 9 + WEEK_COUNT],
+    [0, 10 + WEEK_COUNT, 2, 10 + WEEK_COUNT],
+    [0, 11 + WEEK_COUNT, 2, 11 + WEEK_COUNT]
+  ];
+  let mergeJson = [];
+  for (let i = 0; i < merge.length; i++)
+  {
+    let m = merge[i];
+    let jsonInterval = { s: { r: m[0] + tableBeginRow, c: m[1] }, e: { r: m[2] + tableBeginRow, c: m[3] } };
+    mergeJson.push(jsonInterval);
+  }
+
+  ws["!merges"] = mergeJson;
+
+  /* ----- Границы у клеток ---- */
+  /* Тонкие границы */
+  let borderStyle = {
+    border: {
+      right: {
+        style: "thin",
+        color: { rgb: "#000000" }
+      },
+      left: {
+        style: "thin",
+        color: { rgb: "#000000" }
+      },
+      top: {
+        style: "thin",
+        color: { rgb: "#000000" }
+      },
+      bottom: {
+        style: "thin",
+        color: { rgb: "#000000" }
+      }
+    }
+  };
+
+  // Установить границы у всей таблицы, кроме секции "Итого" внизу
+  for (R = tableBeginRow; R < tableBeginRow + tableSpanVertical - 1; R++) {
+    for (C = 0; C < tableSpanHorizontal; C++) {
+      const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+      ws[cell_address].s = combineBorderStyles(ws, cell_address, borderStyle);
+    }
+  }
+
+  // Установить границы у секции "Итого" внизу
+  R = tableBeginRow + tableSpanVertical - 1;
+  for (C = bottomTotalColumn; C < tableSpanHorizontal; C++) {
+    const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+    ws[cell_address].s = combineBorderStyles(ws, cell_address, borderStyle);
+  }
+  
+  /* Толстые границы */
+  let thickness = "medium";
+  let thickOuterTop = {
+    border: {
+      top: {
+        style: thickness,
+        color: { rgb: "#000000" }
+      }
+    }
+  };
+  let thickOuterRight = {
+    border: {
+      right: {
+        style: thickness,
+        color: { rgb: "#000000" }
+      }
+    }
+  };
+  let thickOuterBottom = {
+    border: {
+      bottom: {
+        style: thickness,
+        color: { rgb: "#000000" }
+      }
+    }
+  };
+  let thickOuterLeft = {
+    border: {
+      left: {
+        style: thickness,
+        color: { rgb: "#000000" }
+      }
+    }
+  };
+
+  // Верхний край таблицы
+  R = tableBeginRow;
+  for (C = 0; C < tableSpanHorizontal; C++) {
+    const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+    ws[cell_address].s = combineBorderStyles(ws, cell_address, thickOuterTop);
+  }
+
+  // Правый край таблицы
+  C = tableSpanHorizontal - 1;
+  for (R = tableBeginRow; R < tableBeginRow + tableSpanVertical; R++) {
+    const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+    ws[cell_address].s = combineBorderStyles(ws, cell_address, thickOuterRight);
+  }
+
+  // Нижние границы
+  R = tableBeginRow + tableSpanVertical - 2;
+  for (C = 0; C < tableSpanHorizontal; C++) {
+    const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+    ws[cell_address].s = combineBorderStyles(ws, cell_address, thickOuterBottom);
+  }
+
+  // Нижние границы секции "Итого"
+  R = tableBeginRow + tableSpanVertical - 1;
+  for (C = bottomTotalColumn; C < tableSpanHorizontal; C++) {
+    const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+    ws[cell_address].s = combineBorderStyles(ws, cell_address, thickOuterBottom);
+  }
+  
+  // Левая граница у одной клетки
+  {
+    const cell_address = XLSX.utils.encode_cell({
+      r: tableBeginRow + tableSpanVertical - 1,
+      c: bottomTotalColumn
+    });
+    ws[cell_address].s = combineBorderStyles(ws, cell_address, thickOuterLeft);
+  }
+  
+  // Левые границы таблицы
+  C = 0;
+  for (R = tableBeginRow; R < tableBeginRow + tableSpanVertical - 2; R++) {
+    const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+    ws[cell_address].s = combineBorderStyles(ws, cell_address, thickOuterLeft);
+  }
+
+  // Граница разделения осеннего и весеннего семестров
+  C = WEEK_AUTUMN;
+  for (R = tableBeginRow; R < tableBeginRow + tableSpanVertical - 1; R++) {
+    const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+    ws[cell_address].s = combineBorderStyles(ws, cell_address, thickOuterRight);
+  }
+
+  // Граница разделения весеннего семестров и части с итогами
+  C = WEEK_COUNT;
+  for (R = tableBeginRow; R < tableBeginRow + tableSpanVertical - 1; R++) {
+    const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+    ws[cell_address].s = combineBorderStyles(ws, cell_address, thickOuterRight);
+  }
+
+  let defaultFontStyle = {
+    font: {
+      name: "Arial",
+      sz: 12
+    }
+  }
+
   const workbook = XLSX.utils.book_new();
 
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Календарный график');
-  XLSX.writeFile(workbook, `${'Календарный_учебный_график_' + data.group + '_' + data.academic_year || 'calendar_plan'}.xlsx`);
+  XLSX.utils.book_append_sheet(workbook, ws, 'Календарный график');
+  XLSX.writeFile(
+    workbook,
+    `${'Календарный_учебный_график_' + data.group + '_' + data.academic_year || 'calendar_plan'}.xlsx`,
+    { defaultCellStyle: defaultFontStyle }
+  );
 }

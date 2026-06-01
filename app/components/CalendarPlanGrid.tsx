@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { WEEK_AUTUMN, WEEK_SPRING, WEEK_COUNT, MAX_COURSES, generateWeekDateRanges } from '../common/CalendarPlanCommon';
 import { exportCalendarPlan } from '../hooks/exportCalendarPlan';
 import { importCalendarPlan } from '../hooks/importCalendarPlan';
 
@@ -17,6 +18,8 @@ type PlanData = {
   group: string;
   profile: string;
   reg_number: string;
+  start_date: string;
+  end_date: string;
   courses: Course[];
 };
 
@@ -25,10 +28,6 @@ type Props = {
   onSave: (data: PlanData) => void;
 };
 
-const WEEK_AUTUMN = 23;
-const WEEK_SPRING = 29;
-const WEEK_COUNT = 52;
-const MAX_COURSES = 6;
 
 const ALLOWED_WEEK_CODES = new Set(['', 'С', 'У', 'П', 'Д', 'Г', '=', 'Н']);
 const isAllowedWeekCode = (code: string) =>
@@ -42,6 +41,8 @@ function normalizePlanData(raw: any): PlanData {
       group: raw.group ?? '',
       profile: raw.profile ?? '',
       reg_number: raw.reg_number ?? '',
+      start_date: raw.start_date ?? '',
+      end_date: raw.end_date ?? '',
       courses: raw.courses.map((c: any, i: number) => ({
         course: c.course ?? i + 1,
         weeks: Array.isArray(c.weeks)
@@ -57,6 +58,8 @@ function normalizePlanData(raw: any): PlanData {
     group: '',
     profile: '',
     reg_number: '',
+    start_date: '',
+    end_date: '',
     courses: [{ course: 1, weeks: Array(WEEK_COUNT).fill('') }],
   };
 }
@@ -64,72 +67,33 @@ function normalizePlanData(raw: any): PlanData {
 const count = (weeks: string[], codes: string[]) =>
   weeks.filter((w) => codes.includes(w)).length;
 
-function generateWeekDateRanges(startDateStr: string): string[] {
-  const weekRanges: string[] = [];
-  
-  // Парсим дату правильно (игнорируя timezone issues)
-  const [year, month, day] = startDateStr.split('-').map(Number);
-  const firstDay = new Date(year, month - 1, day); // месяцы считаются с 0
-  const dayOfWeek = firstDay.getDay(); // 0 = воскресенье, 1 = понедельник, ..., 6 = суббота
-  
-  const formatDate = (date: Date): string => {
-    const d = date.getDate();
-    const m = date.toLocaleDateString('ru-RU', { month: 'short' });
-    return `${d} ${m}`;
-  };
-
-  const DAY_MS = 24 * 60 * 60 * 1000;
-  
-  console.log(`DEBUG: startDateStr=${startDateStr}, dayOfWeek=${dayOfWeek} (0=вс, 1=пн, 2=вт)`);
-  
-  // Если 1 число - суббота (6) или воскресенье (0), начинаем с понедельника
-  if (dayOfWeek === 0 || dayOfWeek === 6) {
-    // Пропускаем выходной день, начинаем с понедельника
-    const daysToMonday = dayOfWeek === 0 ? 1 : 2;
-    const firstMonday = new Date(firstDay.getTime() + daysToMonday * DAY_MS);
-    
-    // Все 52 недели - полные недели пн-вс
-    for (let i = 0; i < WEEK_COUNT; i++) {
-      const weekStart = new Date(firstMonday.getTime() + i * 7 * DAY_MS);
-      const weekEnd = new Date(firstMonday.getTime() + (i * 7 + 6) * DAY_MS);
-      weekRanges.push(`${formatDate(weekStart)} - ${formatDate(weekEnd)}`);
-    }
-  } else {
-    // Будний день - начинаем с этого дня
-    // Первая неделя: от startDate до ближайшего воскресенья
-    // Дней в первой неделе: (7 - dayOfWeek + 1) или просто (8 - dayOfWeek)
-    // Например: вторник (dayOfWeek=2) -> 8-2=6 дней -> до вс 7 дня включительно
-    const daysToNextSunday = 8 - dayOfWeek; // это количество дней включая воскресенье
-    const firstWeekEnd = new Date(firstDay.getTime() + (daysToNextSunday - 1) * DAY_MS);
-    
-    console.log(`DEBUG: daysToNextSunday=${daysToNextSunday}, firstDay=${formatDate(firstDay)}, firstWeekEnd=${formatDate(firstWeekEnd)}`);
-    
-    weekRanges.push(`${formatDate(firstDay)} - ${formatDate(firstWeekEnd)}`);
-    
-    // Остальные 51 неделя - полные недели пн-вс
-    const firstMonday = new Date(firstDay.getTime() + daysToNextSunday * DAY_MS);
-    
-    for (let i = 0; i < WEEK_COUNT - 1; i++) {
-      const weekStart = new Date(firstMonday.getTime() + i * 7 * DAY_MS);
-      const weekEnd = new Date(firstMonday.getTime() + (i * 7 + 6) * DAY_MS);
-      weekRanges.push(`${formatDate(weekStart)} - ${formatDate(weekEnd)}`);
-    }
-  }
-
-  console.log(`DEBUG: первые 3 недели: ${weekRanges.slice(0, 3).join(' | ')}`);
-  return weekRanges;
-}
 
 export function CalendarPlanGrid({ plan, onSave }: Props) {
   const [data, setData] = useState<PlanData>(
     normalizePlanData(plan?.data)
   );
   const [startDate, setStartDate] = useState(() => {
-    if (plan?.data?.start_date) return plan.data.start_date;
-    const year = plan?.data?.academic_year || new Date().getFullYear();
-    return `${year}-09-01`;
+    if (data?.start_date) return data.start_date;
+    let year = data?.academic_year || new Date().getFullYear();
+    let default_date = `${year}-09-01`;
+    if (data)
+    {
+      data.start_date = default_date;
+    }
+    return default_date;
   });
-  const weekDateRanges = generateWeekDateRanges(startDate);
+  const [endDate, setEndDate] = useState(() => {
+    if (data?.end_date) return data.end_date;
+    const year = data?.academic_year || new Date().getFullYear();
+    const nextYear = parseInt(year) + 1;
+    let default_date = `${nextYear}-08-31`;
+    if (data)
+    {
+      data.end_date = default_date;
+    }
+    return default_date;
+  });
+  const weekDateRanges = generateWeekDateRanges(startDate, endDate);
 
   const courses = Array.isArray(data.courses) ? data.courses : [];
 
@@ -154,25 +118,20 @@ export function CalendarPlanGrid({ plan, onSave }: Props) {
   };
 
   const handleSave = () => {
-    if (
-      !data.title ||
-      !data.academic_year ||
-      !data.group ||
-      !data.profile ||
-      !data.reg_number
-    ) {
+    if (!(data.title &&
+          data.academic_year &&
+          data.group &&
+          data.profile &&
+          data.reg_number &&
+          data.start_date &&
+          data.end_date))
+    {
       alert('Заполните все обязательные поля');
       return;
     }
 
     onSave(data);
   };
-
-  const isValid = data.title &&
-    data.academic_year &&
-    data.group &&
-    data.profile &&
-    data.reg_number;
 
   const totals = (() => {
   let tAutumn = 0;
@@ -275,6 +234,20 @@ function calculateCourseStats(weeks: string[]) {
   };
 }
 
+// On new date input synchronize data.start_date and state variable startDate
+// for correct save and export
+const handleStartDateChange = (e) =>
+{
+  setStartDate(e.target.value);
+  setData({...data, start_date: e.target.value});
+}
+
+const handleEndDateChange = (e) =>
+{
+  setEndDate(e.target.value);
+  setData({...data, end_date: e.target.value});
+}
+
 
   return (
     <div className="calendar-plan">
@@ -321,10 +294,22 @@ function calculateCourseStats(weeks: string[]) {
           <input 
             type="date" 
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            onChange={(e) => { handleStartDateChange(e); }}
           />
           <small style={{ display: 'block', marginTop: '4px', color: '#666', fontSize: '12px' }}>
             (Если выходной день - начнётся с ближайшего понедельника)
+          </small>
+        </label>
+
+        <label>
+          Дата окончания обучения:
+          <input 
+            type="date" 
+            value={endDate}
+            onChange={(e) => { handleEndDateChange(e); }}
+          />
+          <small style={{ display: 'block', marginTop: '4px', color: '#666', fontSize: '12px' }}>
+            (Если выходной день - обучение закончится в пятницу)
           </small>
         </label>
 
@@ -448,7 +433,7 @@ function calculateCourseStats(weeks: string[]) {
       </div>
 
       <div className="calendar-plan__actions">
-        <button onClick={() => isValid ? onSave(data) : alert('Заполните шапку')}>
+        <button onClick={() => { handleSave(); }}>
           Сохранить календарный план
         </button>
       </div>
