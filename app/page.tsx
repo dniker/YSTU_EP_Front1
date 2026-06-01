@@ -146,7 +146,9 @@ const Home = () => {
 
 	const handleDisciplineClick = (discipline: Discipline) => {
 		const actualDiscipline =
-			disciplines.find(d => d.table_id === discipline.table_id) || discipline
+			disciplines.find(d => d.table_id === discipline.table_id) ||
+			rows.flatMap(r => r.data.flat()).find(d => d.table_id === discipline.table_id) ||
+			discipline
 		setSelectedDiscipline(actualDiscipline)
 		setIsAttributesPanelVisible(true)
 	}

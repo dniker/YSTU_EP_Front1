@@ -17,9 +17,10 @@ console.log(`API Proxy initialized. Backend URL: ${BACKEND_URL}`)
 
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: { path: string[] } }
+	{ params }: { params: Promise<{ path: string[] }> }
 ) {
-	const pathSegments = params.path || []
+	const { path } = await params
+	const pathSegments = path || []
 	const endpoint = `/${pathSegments.join('/')}`
 	const searchParams = request.nextUrl.searchParams
 	const queryString = searchParams.toString()
@@ -52,9 +53,10 @@ export async function GET(
 
 export async function POST(
 	request: NextRequest,
-	{ params }: { params: { path: string[] } }
+	{ params }: { params: Promise<{ path: string[] }> }
 ) {
-	const pathSegments = params.path || []
+	const { path } = await params
+	const pathSegments = path || []
 	const endpoint = `/${pathSegments.join('/')}`
 	let body
 
@@ -109,9 +111,10 @@ export async function POST(
 
 export async function PUT(
 	request: NextRequest,
-	{ params }: { params: { path: string[] } }
+	{ params }: { params: Promise<{ path: string[] }> }
 ) {
-	const pathSegments = params.path || []
+	const { path } = await params
+	const pathSegments = path || []
 	const endpoint = `/${pathSegments.join('/')}`
 	let body
 
@@ -148,9 +151,10 @@ export async function PUT(
 
 export async function DELETE(
 	request: NextRequest,
-	{ params }: { params: { path: string[] } }
+	{ params }: { params: Promise<{ path: string[] }> }
 ) {
-	const pathSegments = params.path || []
+	const { path } = await params
+	const pathSegments = path || []
 	const endpoint = `/${pathSegments.join('/')}`
 
 	const url = `${BACKEND_URL}${endpoint}`

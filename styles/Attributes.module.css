@@ -209,6 +209,13 @@
   margin-bottom: 0.5em;
 }
 
+.infoMessage {
+  color: #ff9800;
+  font-size: 0.8em;
+  margin-top: -0.5em;
+  margin-bottom: 0.5em;
+}
+
 .competencies-button {
   width: 100%;
   padding: 10px;

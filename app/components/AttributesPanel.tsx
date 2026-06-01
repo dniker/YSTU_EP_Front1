@@ -51,20 +51,19 @@ export const AttributesPanel = ({
 		lab: number
 	) => {
 		const totalHours = lecture + practical + lab
-		// +1 делаем поскольку количество зачетных единиц не должно быть меньше 1
-		const calculatedCredits = Math.floor((totalHours / 36) + 1)
-		const exactValue = totalHours / 36
+		const calculatedCredits = Math.ceil(totalHours / 36)
 
 		if (totalHours <= 0) {
 			setCreditsError('Общее количество часов должно быть больше 0')
 			return false
 		} else if (totalHours % 36 !== 0) {
+			const exactValue = totalHours / 36
 			setCreditsError(
-				`Зачетные единицы рассчитаны как ${calculatedCredits} (${exactValue.toFixed(
+				`Часы округлены до ${calculatedCredits} ЗЕ (${exactValue.toFixed(
 					2
-				)} до округления)`
+				)} точно). Всего ${totalHours} часов.`
 			)
-			return false
+			return true
 		} else {
 			setCreditsError(null)
 			return true
@@ -89,7 +88,7 @@ export const AttributesPanel = ({
 
 		const isValid = calculateCredits(lecture, practical, lab)
 		if (isValid) {
-			const newCredits = Math.floor((lecture + practical + lab) / 36)
+			const newCredits = Math.ceil((lecture + practical + lab) / 36)
 			handleAttributeChange('credits', newCredits)
 		}
 	}
@@ -147,7 +146,7 @@ export const AttributesPanel = ({
 		} else {
 			setCreditsError(null)
 		}
-	}, [selectedDiscipline]) // Зависимость от selectedDiscipline
+	}, [selectedDiscipline])
 
 	const isInvalidHours = selectedDiscipline
 		? selectedDiscipline.lectureHours +
@@ -328,13 +327,13 @@ export const AttributesPanel = ({
 				className={creditsError ? attributes.invalid : ''}
 				value={selectedDiscipline?.credits ?? 1}
 				onChange={e => {
-					const value = Math.max(1, Math.min(10, Number(e.target.value)))
-					handleAttributeChange('credits', value)
-					// Перепроверяем часы после ручного изменения ЗЕ
-					if (selectedDiscipline) {
-						const { lectureHours, labHours, practicalHours } =
-							selectedDiscipline
-						calculateCredits(lectureHours, labHours, practicalHours)
+					const value = Number(e.target.value)
+					if (value >= 1 && value <= 10) {
+						handleAttributeChange('credits', value)
+						if (selectedDiscipline) {
+							const { lectureHours, labHours, practicalHours } = selectedDiscipline
+							calculateCredits(lectureHours, labHours, practicalHours)
+						}
 					}
 				}}
 				disabled={!selectedDiscipline}
@@ -342,7 +341,9 @@ export const AttributesPanel = ({
 				max='10'
 			/>
 			{creditsError && (
-				<div className={attributes.errorMessage}>{creditsError}</div>
+				<div className={creditsError.includes('Часы округлены') ? attributes.infoMessage : attributes.errorMessage}>
+					{creditsError}
+				</div>
 			)}
 
 			<button

@@ -36,24 +36,24 @@ export const CoreModal = ({
 	const [selectedCore, setSelectedCore] = useState<Core | null>(null)
 
 	// Загрузка ядер из БД
-	useEffect(() => {
-		const fetchCores = async () => {
-			setIsLoading(true)
-			try {
-				const response = await fetch('http://localhost:8001/map-cors/')
-				if (!response.ok) throw new Error('Ошибка загрузки ядер')
-				const data = await response.json()
-				setCores(data)
-			} catch (err) {
-				console.error('Error loading cores:', err)
-				setError(
-					`Ошибка загрузки: ${err instanceof Error ? err.message : String(err)}`
-				)
-			} finally {
-				setIsLoading(false)
-			}
+	const fetchCores = async () => {
+		setIsLoading(true)
+		try {
+			const response = await fetch('http://localhost:8001/map-cors/')
+			if (!response.ok) throw new Error('Ошибка загрузки ядер')
+			const data = await response.json()
+			setCores(data)
+		} catch (err) {
+			console.error('Error loading cores:', err)
+			setError(
+				`Ошибка загрузки: ${err instanceof Error ? err.message : String(err)}`
+			)
+		} finally {
+			setIsLoading(false)
 		}
+	}
 
+	useEffect(() => {
 		fetchCores()
 	}, [])
 
@@ -105,6 +105,8 @@ export const CoreModal = ({
 		}
 
 		onAddNewCore(newCoreName.trim())
+		setNewCoreName('')
+		await fetchCores()
 		closeCoreModal({} as React.MouseEvent)
 	}
 
@@ -125,6 +127,8 @@ export const CoreModal = ({
 
 			const coreData = await response.json()
 			onAddBasedOnCore(coreData, basedOnCoreName.trim())
+			setBasedOnCoreName('')
+			await fetchCores()
 		} catch (err) {
 			console.error('Ошибка загрузки ядра:', err)
 			setError(`Ошибка: ${err instanceof Error ? err.message : String(err)}`)
