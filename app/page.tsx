@@ -27,6 +27,7 @@ import { useModals } from '@/app/hooks/useModals'
 import { useFileOperations } from '@/app/hooks/useFileOperations'
 import { useSaveMap } from '@/app/hooks/useSaveMap'
 import { useDownloadMap } from '@/app/hooks/useDownloadMap'
+import { useStudyPlanPdf } from '@/app/hooks/useStudyPlanPdf'
 import {
 	Discipline,
 	DirectionData,
@@ -77,6 +78,7 @@ const Home = () => {
 
 	const { downloadExcel, isDownloading: isExporting } =
 		useDownloadMap(showAlert)
+	const { downloadPdf, isGeneratingPdf } = useStudyPlanPdf(showAlert)
 
 	const { handleDragStart, handleDrop } = useDragAndDrop(
 		rows,
@@ -283,15 +285,21 @@ const Home = () => {
 	}
 
 	const checkNonActualDepartments = async (): Promise<string[]> => {
-		const deptToDiscs = new Map<number, Set<string>>()
+		const deptToDiscs = new Map<
+			number,
+			{ departmentName: string; disciplineNames: Set<string> }
+		>()
 		for (const row of rows) {
 			for (const cell of row.data) {
 				for (const disc of cell) {
 					if (disc.department_id) {
 						if (!deptToDiscs.has(disc.department_id)) {
-							deptToDiscs.set(disc.department_id, new Set())
+							deptToDiscs.set(disc.department_id, {
+								departmentName: disc.department || disc.department_name || `ID ${disc.department_id}`,
+								disciplineNames: new Set(),
+							})
 						}
-						deptToDiscs.get(disc.department_id)!.add(disc.name)
+						deptToDiscs.get(disc.department_id)!.disciplineNames.add(disc.name)
 					}
 				}
 			}
@@ -299,13 +307,19 @@ const Home = () => {
 
 		const problematic: string[] = []
 		await Promise.all(
-			[...deptToDiscs.entries()].map(async ([deptId, discNames]) => {
+			[...deptToDiscs.entries()].map(async ([deptId, departmentInfo]) => {
 				try {
 					const res = await fetch(`http://localhost:8001/departments/${deptId}/`)
 					if (res.ok) {
 						const dept = await res.json()
 						if (!dept.is_actual) {
-							discNames.forEach(name => problematic.push(name))
+							const departmentName =
+								dept.short_name ||
+								dept.name ||
+								departmentInfo.departmentName
+							departmentInfo.disciplineNames.forEach(name =>
+								problematic.push(`${name} — ${departmentName}`)
+							)
 						}
 					}
 				} catch {
@@ -314,6 +328,24 @@ const Home = () => {
 			})
 		)
 		return problematic
+	}
+
+	const handleExportPdf = async () => {
+		if (!currentDirection) {
+			showAlert('Сначала выбери направление подготовки')
+			return
+		}
+
+		const problematicDepartments = await checkNonActualDepartments()
+		if (problematicDepartments.length > 0) {
+			showAlert(
+				'Невозможно сформировать PDF. В карте есть дисциплины с неактуальными кафедрами:\n\n' +
+					problematicDepartments.join('\n')
+			)
+			return
+		}
+
+		downloadPdf(rows, currentDirection)
 	}
 
 	const handleSaveMapInfo = () => {
@@ -343,6 +375,7 @@ const Home = () => {
 				onNewOpenItemClick={openInitialModal}
 				onSaveItemClick={handleSaveClick}
 				onExportExcelClick={() => downloadExcel(currentDirection)}
+				onExportPdfClick={handleExportPdf}
 				onToggleCompetenceMatrix={() => setShowCompetenceMatrix(!showCompetenceMatrix)}
 				showCompetenceMatrix={showCompetenceMatrix}
 				directionInfo={

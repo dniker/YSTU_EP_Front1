@@ -8,6 +8,7 @@ interface HeaderProps {
 	onNewOpenItemClick: () => void
 	onSaveItemClick: () => void
 	onExportExcelClick: () => void // <-- добавили
+	onExportPdfClick: () => void
 	onToggleCompetenceMatrix: () => void
 	showCompetenceMatrix: boolean
 	directionInfo?: string
@@ -17,6 +18,7 @@ export const Header = ({
 	onNewOpenItemClick,
 	onSaveItemClick,
 	onExportExcelClick, // <-- добавили
+	onExportPdfClick,
 	onToggleCompetenceMatrix,
 	showCompetenceMatrix,
 	directionInfo,
@@ -49,6 +51,7 @@ export const Header = ({
 
 								{/* <-- исправили: вызываем проп */}
 								<button onClick={onExportExcelClick}>Экспорт в Excel</button>
+								<button onClick={onExportPdfClick}>Экспорт в PDF</button>
 							</div>
 						)}
 					</div>

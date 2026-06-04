@@ -13,6 +13,9 @@ export interface Discipline {
   hasCourseRZ: boolean;
   hasCourseRGR: boolean;
   hasCourseReferat: boolean;
+  hasRZ?: boolean;
+  hasRGR?: boolean;
+  hasReferat?: boolean;
   hasPracticalWork: boolean;
   department_name: string;
   department_id: number;

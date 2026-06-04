@@ -85,7 +85,7 @@ export function CalendarPlanGrid({ plan, onSave }: Props) {
   const [endDate, setEndDate] = useState(() => {
     if (data?.end_date) return data.end_date;
     const year = data?.academic_year || new Date().getFullYear();
-    const nextYear = parseInt(year) + 1;
+    const nextYear = parseInt(String(year), 10) + 1;
     let default_date = `${nextYear}-08-31`;
     if (data)
     {

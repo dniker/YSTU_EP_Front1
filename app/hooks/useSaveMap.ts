@@ -82,9 +82,9 @@ export const useSaveMap = () => {
 					semester_number: semesterIndex + 1,
 					has_course_project: discipline.hasCourseProject || false,
 					has_course_work: discipline.hasCourseWork || false,
-					has_rz: discipline.hasRZ || false,
-					has_rgr: discipline.hasRGR || false,
-					has_referat: discipline.hasReferat || false,
+					has_rz: discipline.hasRZ ?? discipline.hasCourseRZ ?? false,
+					has_rgr: discipline.hasRGR ?? discipline.hasCourseRGR ?? false,
+					has_referat: discipline.hasReferat ?? discipline.hasCourseReferat ?? false,
 					competencies: discipline.competenceCodes?.map(id => ({ id })) || [],
 				})
 			})
