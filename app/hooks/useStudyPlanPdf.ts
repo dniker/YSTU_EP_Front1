@@ -21,6 +21,26 @@ interface StudyPlanReportRow {
 	practicalHours: number
 	labHours: number
 	auditoriumHours: number
+	core: string
+}
+
+interface CoreTotalRow {
+	core: string
+	isTotal: true
+	credits: number
+	totalHours: number
+	exam: number
+	credit: number
+	diffCredit: number
+	courseProject: number
+	courseWork: number
+	rz: number
+	rgr: number
+	referat: number
+	lectureHours: number
+	practicalHours: number
+	labHours: number
+	auditoriumHours: number
 }
 
 interface PdfPage {
@@ -36,6 +56,7 @@ const PDF_HEIGHT = 595
 const PAGE_MARGIN = 40
 const HEADER_HEIGHT = 82
 const TITLE_HEIGHT = 58
+const CORE_HEADER_HEIGHT = 40
 const BODY_FONT = 15
 const SMALL_FONT = 13
 
@@ -76,9 +97,11 @@ const hasControl = (discipline: Discipline, matcher: (value: string) => boolean)
 const getReportRows = (rows: TableRow[]): StudyPlanReportRow[] => {
 	const result: StudyPlanReportRow[] = []
 
-	rows.forEach(row => {
-		row.data.forEach((cell, semesterIndex) => {
-			cell.forEach(discipline => {
+	rows.forEach(coreRow => {
+		const coreName = coreRow.name || 'Без названия ядра'
+		
+		coreRow.data.forEach((disciplinesInSemester, semesterIndex) => {
+			disciplinesInSemester.forEach(discipline => {
 				const credits = toNumber(discipline.credits)
 				const lectureHours = toNumber(discipline.lectureHours)
 				const practicalHours = toNumber(discipline.practicalHours)
@@ -86,25 +109,13 @@ const getReportRows = (rows: TableRow[]): StudyPlanReportRow[] => {
 
 				result.push({
 					name: discipline.name || '',
-					department:
-						discipline.department ||
-						discipline.department_name ||
-						'',
+					department: discipline.department || discipline.department_name || '',
 					semester: discipline.semester || semesterIndex + 1,
 					credits,
 					totalHours: credits * 36,
-					exam: hasControl(
-						discipline,
-						value => value === 'э' || value.startsWith('экз')
-					),
-					credit: hasControl(
-						discipline,
-						value => value === 'з' || value.startsWith('зач')
-					),
-					diffCredit: hasControl(
-						discipline,
-						value => value === 'д' || value.startsWith('диф')
-					),
+					exam: hasControl(discipline, value => value === 'э' || value.startsWith('экз')),
+					credit: hasControl(discipline, value => value === 'з' || value.startsWith('зач')),
+					diffCredit: hasControl(discipline, value => value === 'д' || value.startsWith('диф')),
 					courseProject: Boolean(discipline.hasCourseProject),
 					courseWork: Boolean(discipline.hasCourseWork),
 					rz: Boolean(discipline.hasRZ ?? discipline.hasCourseRZ),
@@ -114,12 +125,69 @@ const getReportRows = (rows: TableRow[]): StudyPlanReportRow[] => {
 					practicalHours,
 					labHours,
 					auditoriumHours: lectureHours + practicalHours + labHours,
+					core: coreName,
 				})
 			})
 		})
 	})
 
-	return result.sort((a, b) => a.semester - b.semester || a.name.localeCompare(b.name))
+	return result.sort((a, b) => {
+		if (a.core !== b.core) return a.core.localeCompare(b.core)
+		if (a.semester !== b.semester) return a.semester - b.semester
+		return a.name.localeCompare(b.name)
+	})
+}
+
+const calculateCoreTotals = (rows: StudyPlanReportRow[]): CoreTotalRow => {
+	if (rows.length === 0) return {} as CoreTotalRow
+	
+	const core = rows[0].core
+	
+	return {
+		core,
+		isTotal: true,
+		credits: rows.reduce((sum, row) => sum + row.credits, 0),
+		totalHours: rows.reduce((sum, row) => sum + row.totalHours, 0),
+		exam: rows.filter(row => row.exam).length,
+		credit: rows.filter(row => row.credit).length,
+		diffCredit: rows.filter(row => row.diffCredit).length,
+		courseProject: rows.filter(row => row.courseProject).length,
+		courseWork: rows.filter(row => row.courseWork).length,
+		rz: rows.filter(row => row.rz).length,
+		rgr: rows.filter(row => row.rgr).length,
+		referat: rows.filter(row => row.referat).length,
+		lectureHours: rows.reduce((sum, row) => sum + row.lectureHours, 0),
+		practicalHours: rows.reduce((sum, row) => sum + row.practicalHours, 0),
+		labHours: rows.reduce((sum, row) => sum + row.labHours, 0),
+		auditoriumHours: rows.reduce((sum, row) => sum + row.auditoriumHours, 0),
+	}
+}
+
+const groupRowsByCore = (rows: StudyPlanReportRow[]): Map<string, { total: CoreTotalRow, rows: StudyPlanReportRow[] }> => {
+	const grouped = new Map<string, StudyPlanReportRow[]>()
+	
+	rows.forEach(row => {
+		const coreName = row.core || 'Без ядра'
+		if (!grouped.has(coreName)) {
+			grouped.set(coreName, [])
+		}
+		grouped.get(coreName)!.push(row)
+	})
+	
+	const result = new Map<string, { total: CoreTotalRow, rows: StudyPlanReportRow[] }>()
+	const cores = Array.from(grouped.keys()).sort((a, b) => {
+		if (a === 'Без ядра') return 1
+		if (b === 'Без ядра') return -1
+		return a.localeCompare(b)
+	})
+	
+	cores.forEach(core => {
+		const coreRows = grouped.get(core)!
+		const totalRow = calculateCoreTotals(coreRows)
+		result.set(core, { total: totalRow, rows: coreRows })
+	})
+	
+	return result
 }
 
 const wrapText = (
@@ -204,9 +272,145 @@ const drawCell = (
 	ctx.restore()
 }
 
-const getColumnValue = (row: StudyPlanReportRow, key: keyof StudyPlanReportRow) => {
-	const value = row[key]
+const drawCoreHeader = (
+	ctx: CanvasRenderingContext2D,
+	y: number,
+	coreName: string,
+	total: CoreTotalRow
+) => {
+	let x = PAGE_MARGIN
+	
+	// Ячейка "Название дисциплины" - здесь пишем название ядра
+	drawCell(ctx, x, y, columns[0].width, CORE_HEADER_HEIGHT, coreName, {
+		fill: '#ffff00',
+		align: 'left',
+		bold: true,
+		font: `700 ${BODY_FONT}px Arial, sans-serif`
+	})
+	x += columns[0].width
+	
+	// Ячейка "Кафедра" - пустая
+	drawCell(ctx, x, y, columns[1].width, CORE_HEADER_HEIGHT, '', {
+		fill: '#ffff00',
+		align: 'center',
+		bold: true
+	})
+	x += columns[1].width
+	
+	// Ячейка "Семестр" - пустая
+	drawCell(ctx, x, y, columns[2].width, CORE_HEADER_HEIGHT, '', {
+		fill: '#ffff00',
+		align: 'center',
+		bold: true
+	})
+	x += columns[2].width
+	
+	// Ячейка "Зачетные единицы" - сумма
+	drawCell(ctx, x, y, columns[3].width, CORE_HEADER_HEIGHT, total.credits.toString(), {
+		fill: '#ffff00',
+		align: 'center',
+		bold: true
+	})
+	x += columns[3].width
+	
+	// Ячейка "Всего часов" - сумма
+	drawCell(ctx, x, y, columns[4].width, CORE_HEADER_HEIGHT, total.totalHours.toString(), {
+		fill: '#ffff00',
+		align: 'center',
+		bold: true
+	})
+	x += columns[4].width
+	
+	// Ячейки "Формы контроля"
+	drawCell(ctx, x, y, columns[5].width, CORE_HEADER_HEIGHT, total.exam.toString(), {
+		fill: '#ffff00',
+		align: 'center',
+		bold: true
+	})
+	x += columns[5].width
+	
+	drawCell(ctx, x, y, columns[6].width, CORE_HEADER_HEIGHT, total.credit.toString(), {
+		fill: '#ffff00',
+		align: 'center',
+		bold: true
+	})
+	x += columns[6].width
+	
+	drawCell(ctx, x, y, columns[7].width, CORE_HEADER_HEIGHT, total.diffCredit.toString(), {
+		fill: '#ffff00',
+		align: 'center',
+		bold: true
+	})
+	x += columns[7].width
+	
+	drawCell(ctx, x, y, columns[8].width, CORE_HEADER_HEIGHT, total.courseProject.toString(), {
+		fill: '#ffff00',
+		align: 'center',
+		bold: true
+	})
+	x += columns[8].width
+	
+	drawCell(ctx, x, y, columns[9].width, CORE_HEADER_HEIGHT, total.courseWork.toString(), {
+		fill: '#ffff00',
+		align: 'center',
+		bold: true
+	})
+	x += columns[9].width
+	
+	drawCell(ctx, x, y, columns[10].width, CORE_HEADER_HEIGHT, total.rz.toString(), {
+		fill: '#ffff00',
+		align: 'center',
+		bold: true
+	})
+	x += columns[10].width
+	
+	drawCell(ctx, x, y, columns[11].width, CORE_HEADER_HEIGHT, total.rgr.toString(), {
+		fill: '#ffff00',
+		align: 'center',
+		bold: true
+	})
+	x += columns[11].width
+	
+	drawCell(ctx, x, y, columns[12].width, CORE_HEADER_HEIGHT, total.referat.toString(), {
+		fill: '#ffff00',
+		align: 'center',
+		bold: true
+	})
+	x += columns[12].width
+	
+	// Ячейки "Часы аудиторной работы"
+	drawCell(ctx, x, y, columns[13].width, CORE_HEADER_HEIGHT, total.lectureHours.toString(), {
+		fill: '#ffff00',
+		align: 'center',
+		bold: true
+	})
+	x += columns[13].width
+	
+	drawCell(ctx, x, y, columns[14].width, CORE_HEADER_HEIGHT, total.practicalHours.toString(), {
+		fill: '#ffff00',
+		align: 'center',
+		bold: true
+	})
+	x += columns[14].width
+	
+	drawCell(ctx, x, y, columns[15].width, CORE_HEADER_HEIGHT, total.labHours.toString(), {
+		fill: '#ffff00',
+		align: 'center',
+		bold: true
+	})
+	x += columns[15].width
+	
+	drawCell(ctx, x, y, columns[16].width, CORE_HEADER_HEIGHT, total.auditoriumHours.toString(), {
+		fill: '#ffff00',
+		align: 'center',
+		bold: true
+	})
+}
+
+const getColumnValue = (row: StudyPlanReportRow, key: string): string => {
+	const value = row[key as keyof StudyPlanReportRow]
 	if (typeof value === 'boolean') return value ? '+' : ''
+	if (value === undefined || value === null) return ''
 	return `${value}`
 }
 
@@ -272,7 +476,7 @@ const drawHeader = (ctx: CanvasRenderingContext2D, y: number) => {
 }
 
 const drawPage = (
-	rows: StudyPlanReportRow[],
+	groupedRows: Map<string, { total: CoreTotalRow, rows: StudyPlanReportRow[] }>,
 	direction: DirectionData | null,
 	pageNumber: number,
 	totalPages: number
@@ -304,23 +508,43 @@ const drawPage = (
 	drawHeader(ctx, headerY)
 
 	let y = headerY + HEADER_HEIGHT
-	rows.forEach((row, index) => {
-		const rowHeight = calculateRowHeight(ctx, row)
-		let x = PAGE_MARGIN
-		const fill = index % 2 === 0 ? '#ffffff' : '#f8fafc'
+	let globalRowIndex = 0
+	
+	for (const [coreName, { total, rows }] of groupedRows) {
+		if (y + CORE_HEADER_HEIGHT > PAGE_HEIGHT - PAGE_MARGIN) {
+			break
+		}
+		
+		// Рисуем строку ядра с итогами
+		drawCoreHeader(ctx, y, coreName, total)
+		y += CORE_HEADER_HEIGHT
+		
+		// Рисуем дисциплины ядра
+		for (let index = 0; index < rows.length; index++) {
+			const row = rows[index]
+			const rowHeight = calculateRowHeight(ctx, row)
+			
+			if (y + rowHeight > PAGE_HEIGHT - PAGE_MARGIN) {
+				break
+			}
+			
+			let x = PAGE_MARGIN
+			const fill = globalRowIndex % 2 === 0 ? '#ffffff' : '#f8fafc'
 
-		columns.forEach(column => {
-			const value = getColumnValue(row, column.key)
-			drawCell(ctx, x, y, column.width, rowHeight, value, {
-				fill,
-				align: column.key === 'name' || column.key === 'department' ? 'left' : 'center',
-				maxLines: column.key === 'name' ? 4 : 3,
+			columns.forEach(column => {
+				const value = getColumnValue(row, column.key)
+				drawCell(ctx, x, y, column.width, rowHeight, value, {
+					fill,
+					align: column.key === 'name' || column.key === 'department' ? 'left' : 'center',
+					maxLines: column.key === 'name' ? 4 : 3,
+				})
+				x += column.width
 			})
-			x += column.width
-		})
 
-		y += rowHeight
-	})
+			y += rowHeight
+			globalRowIndex++
+		}
+	}
 
 	const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
 	const base64 = dataUrl.split(',')[1]
@@ -337,31 +561,63 @@ const drawPage = (
 	}
 }
 
-const paginateRows = (rows: StudyPlanReportRow[]) => {
+const paginateGroupedRows = (groupedRows: Map<string, { total: CoreTotalRow, rows: StudyPlanReportRow[] }>) => {
 	const measureCanvas = document.createElement('canvas')
 	const ctx = measureCanvas.getContext('2d')
 	if (!ctx) throw new Error('Не удалось подготовить PDF')
 
-	const availableHeight =
-		PAGE_HEIGHT - PAGE_MARGIN - TITLE_HEIGHT - HEADER_HEIGHT - PAGE_MARGIN
-	const pages: StudyPlanReportRow[][] = []
-	let currentPage: StudyPlanReportRow[] = []
+	const availableHeight = PAGE_HEIGHT - PAGE_MARGIN - TITLE_HEIGHT - HEADER_HEIGHT - PAGE_MARGIN
+	const pages: Map<string, { total: CoreTotalRow, rows: StudyPlanReportRow[] }>[] = []
+	let currentPage = new Map<string, { total: CoreTotalRow, rows: StudyPlanReportRow[] }>()
 	let currentHeight = 0
-
-	rows.forEach(row => {
-		const rowHeight = calculateRowHeight(ctx, row)
-		if (currentPage.length > 0 && currentHeight + rowHeight > availableHeight) {
+	
+	for (const [coreName, { total, rows }] of groupedRows) {
+		const coreHeaderHeight = CORE_HEADER_HEIGHT
+		
+		if (currentPage.size > 0 && currentHeight + coreHeaderHeight > availableHeight) {
 			pages.push(currentPage)
-			currentPage = []
+			currentPage = new Map()
 			currentHeight = 0
 		}
-
-		currentPage.push(row)
-		currentHeight += rowHeight
-	})
-
-	if (currentPage.length > 0) pages.push(currentPage)
-	return pages
+		
+		currentHeight += coreHeaderHeight
+		
+		let rowsHeight = 0
+		const rowsForPage: StudyPlanReportRow[] = []
+		
+		for (const row of rows) {
+			const rowHeight = calculateRowHeight(ctx, row)
+			
+			if (currentHeight + rowsHeight + rowHeight > availableHeight) {
+				if (rowsForPage.length === 0) {
+					if (currentPage.size > 0) {
+						pages.push(currentPage)
+						currentPage = new Map()
+						currentHeight = coreHeaderHeight
+						rowsHeight = 0
+						rowsForPage.push(row)
+						rowsHeight += rowHeight
+					}
+				} else {
+					break
+				}
+			} else {
+				rowsForPage.push(row)
+				rowsHeight += rowHeight
+			}
+		}
+		
+		if (rowsForPage.length > 0) {
+			currentPage.set(coreName, { total, rows: rowsForPage })
+			currentHeight += rowsHeight
+		}
+	}
+	
+	if (currentPage.size > 0) {
+		pages.push(currentPage)
+	}
+	
+	return pages.length > 0 ? pages : [new Map()]
 }
 
 const buildPdf = (pages: PdfPage[]) => {
@@ -389,14 +645,8 @@ const buildPdf = (pages: PdfPage[]) => {
 	write('%PDF-1.4\n')
 
 	const pageObjects = pages.map((_, index) => 3 + index * 3)
-	writeObject(
-		1,
-		'<< /Type /Catalog /Pages 2 0 R >>'
-	)
-	writeObject(
-		2,
-		`<< /Type /Pages /Kids [${pageObjects.map(objectNumber => `${objectNumber} 0 R`).join(' ')}] /Count ${pages.length} >>`
-	)
+	writeObject(1, '<< /Type /Catalog /Pages 2 0 R >>')
+	writeObject(2, `<< /Type /Pages /Kids [${pageObjects.map(objectNumber => `${objectNumber} 0 R`).join(' ')}] /Count ${pages.length} >>`)
 
 	pages.forEach((page, index) => {
 		const pageObject = 3 + index * 3
@@ -406,28 +656,17 @@ const buildPdf = (pages: PdfPage[]) => {
 		const content = `q\n${PDF_WIDTH} 0 0 ${PDF_HEIGHT} 0 0 cm\n/${imageName} Do\nQ`
 		const contentBytes = textEncoder.encode(content)
 
-		writeObject(
-			pageObject,
-			`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PDF_WIDTH} ${PDF_HEIGHT}] /Resources << /XObject << /${imageName} ${imageObject} 0 R >> >> /Contents ${contentObject} 0 R >>`
-		)
-		writeObject(
-			contentObject,
-			[
-				textEncoder.encode(`<< /Length ${contentBytes.length} >>\nstream\n`),
-				contentBytes,
-				textEncoder.encode('\nendstream'),
-			]
-		)
-		writeObject(
-			imageObject,
-			[
-				textEncoder.encode(
-					`<< /Type /XObject /Subtype /Image /Width ${page.width} /Height ${page.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${page.imageBytes.length} >>\nstream\n`
-				),
-				page.imageBytes,
-				textEncoder.encode('\nendstream'),
-			]
-		)
+		writeObject(pageObject, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PDF_WIDTH} ${PDF_HEIGHT}] /Resources << /XObject << /${imageName} ${imageObject} 0 R >> >> /Contents ${contentObject} 0 R >>`)
+		writeObject(contentObject, [
+			textEncoder.encode(`<< /Length ${contentBytes.length} >>\nstream\n`),
+			contentBytes,
+			textEncoder.encode('\nendstream'),
+		])
+		writeObject(imageObject, [
+			textEncoder.encode(`<< /Type /XObject /Subtype /Image /Width ${page.width} /Height ${page.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${page.imageBytes.length} >>\nstream\n`),
+			page.imageBytes,
+			textEncoder.encode('\nendstream'),
+		])
 	})
 
 	const xrefOffset = length
@@ -455,10 +694,7 @@ const downloadBlob = (blob: Blob, filename: string) => {
 
 const getPdfFilename = (direction: DirectionData | null) => {
 	const baseName = direction?.name || 'study_plan'
-	const safeName = baseName
-		.replace(/[\\/:*?"<>|]+/g, '_')
-		.replace(/\s+/g, '_')
-		.slice(0, 80)
+	const safeName = baseName.replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, '_').slice(0, 80)
 	return `${safeName || 'study_plan'}.pdf`
 }
 
@@ -468,6 +704,7 @@ export const useStudyPlanPdf = (showAlert: ShowAlert) => {
 	const downloadPdf = useCallback(
 		(rows: TableRow[], currentDirection: DirectionData | null) => {
 			const reportRows = getReportRows(rows)
+			
 			if (reportRows.length === 0) {
 				showAlert('Нет данных для формирования PDF. Добавьте дисциплины в учебный план.')
 				return
@@ -476,14 +713,16 @@ export const useStudyPlanPdf = (showAlert: ShowAlert) => {
 			setIsGeneratingPdf(true)
 
 			try {
-				const pageRows = paginateRows(reportRows)
-				const renderedPages = pageRows.map((rowsOnPage, index) =>
-					drawPage(rowsOnPage, currentDirection, index + 1, pageRows.length)
+				const groupedRows = groupRowsByCore(reportRows)
+				const pageGroups = paginateGroupedRows(groupedRows)
+				const renderedPages = pageGroups.map((groupedRowsOnPage, index) =>
+					drawPage(groupedRowsOnPage, currentDirection, index + 1, pageGroups.length)
 				)
 				const pdf = buildPdf(renderedPages)
 				downloadBlob(pdf, getPdfFilename(currentDirection))
 				showAlert('PDF учебного плана сформирован')
 			} catch (error) {
+				console.error('Ошибка:', error)
 				showAlert(error instanceof Error ? error.message : 'Ошибка формирования PDF')
 			} finally {
 				setIsGeneratingPdf(false)
