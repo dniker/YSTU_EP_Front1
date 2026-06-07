@@ -492,6 +492,11 @@ const Home = () => {
 						loadCoreData(newCore)
 						coreModal.closeModal()
 					}}
+					onDeleteCore={(coreId: number) => {
+						// Удаляем ядро из таблицы по id
+						setRows(prev => prev.filter(row => row.id !== coreId))
+						showAlert('Ядро успешно удалено из плана')
+					}}
 					currentDirection={currentDirection}
 				/>
 			)}

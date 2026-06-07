@@ -10,6 +10,7 @@ interface CoreModalProps {
 	onAddExistingCore: (core: TableRow) => void
 	onAddNewCore: (coreName: string) => void
 	onAddBasedOnCore: (baseCore: TableRow, newName: string) => void // Новый обработчик
+	onDeleteCore: (coreId: number) => void // Обработчик удаления ядра
 	currentDirection: DirectionData | null
 }
 
@@ -25,6 +26,7 @@ export const CoreModal = ({
 	onAddExistingCore,
 	onAddNewCore,
 	onAddBasedOnCore, // Новый пропс
+	onDeleteCore, // Новый пропс для удаления
 	currentDirection,
 }: CoreModalProps) => {
 	const [cores, setCores] = useState<Core[]>([])
@@ -137,6 +139,32 @@ export const CoreModal = ({
 		}
 	}
 
+	const handleDeleteCore = async () => {
+		if (!selectedCore) return
+
+		try {
+			setIsLoading(true)
+			const response = await fetch(`http://localhost:8001/map-cors/${selectedCore.id}`, {
+				method: 'DELETE',
+			})
+
+			if (!response.ok) throw new Error('Ошибка удаления ядра')
+
+			// Уведомляем parent компонент об удалении ядра
+			onDeleteCore(selectedCore.id)
+			
+			// После успешного удаления обновляем список ядер
+			fetchCores()
+			setSelectedCore(null)
+		}
+		catch (err) {
+			console.error('Ошибка удаления ядра:', err)
+			setError(`Ошибка: ${err instanceof Error ? err.message : String(err)}`)
+		} finally {
+			setIsLoading(false)
+		}
+	}
+
 	const handleCloseClick = (e: React.MouseEvent) => {
 		e.stopPropagation()
 		closeCoreModal(e)
@@ -233,6 +261,23 @@ export const CoreModal = ({
 								style={{ marginTop: '10px' }}
 							>
 								{isLoading ? 'Загрузка...' : 'Добавить из базы'}
+							</button>
+						</div>
+						{/* Блок: Удаление выбранного ядра */}
+						<div 
+							style={{
+								marginTop: '20px',
+								paddingTop: '20px',
+								borderTop: '1px solid #ddd',
+							}}
+						>
+							<h4>Удаление ядра</h4>
+							<button
+								className={modalContent.addButton}
+								onClick={handleDeleteCore}
+								disabled={!selectedCore || isLoading}
+							>
+								Удалить выбранное ядро
 							</button>
 						</div>
 					</div>

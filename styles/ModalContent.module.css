@@ -98,7 +98,7 @@
 }
 
 .scrollContainer {
-  max-height: 400px;
+  max-height: 100%;
   overflow-y: auto;
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -264,7 +264,7 @@
 
 /* Список элементов */
 .scrollContainer {
-  height: 400px;
+  height: 100%;
   overflow-y: auto;
 }
 
@@ -349,4 +349,3 @@
   background: #b7b7b7;
   cursor: not-allowed;
 }
-

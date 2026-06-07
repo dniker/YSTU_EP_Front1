@@ -28,7 +28,6 @@ type Props = {
   onSave: (data: PlanData) => void;
 };
 
-
 const ALLOWED_WEEK_CODES = new Set(['', 'С', 'У', 'П', 'Д', 'Г', '=', 'Н']);
 const isAllowedWeekCode = (code: string) =>
   ALLOWED_WEEK_CODES.has(String(code).toUpperCase());
@@ -67,6 +66,19 @@ function normalizePlanData(raw: any): PlanData {
 const count = (weeks: string[], codes: string[]) =>
   weeks.filter((w) => codes.includes(w)).length;
 
+// Функции валидации дат
+const validateDates = (startDate: string, endDate: string): boolean => {
+  if (!startDate || !endDate) return true;
+  return new Date(startDate) <= new Date(endDate);
+};
+
+const getDateErrorMessage = (startDate: string, endDate: string): string | null => {
+  if (!startDate || !endDate) return null;
+  if (new Date(startDate) > new Date(endDate)) {
+    return 'Ошибка: Дата окончания обучения не может быть раньше даты начала!';
+  }
+  return null;
+};
 
 export function CalendarPlanGrid({ plan, onSave }: Props) {
   const [data, setData] = useState<PlanData>(
@@ -93,6 +105,10 @@ export function CalendarPlanGrid({ plan, onSave }: Props) {
     }
     return default_date;
   });
+  
+  // State для ошибки дат
+  const [dateError, setDateError] = useState<string | null>(null);
+  
   const weekDateRanges = generateWeekDateRanges(startDate, endDate);
 
   const courses = Array.isArray(data.courses) ? data.courses : [];
@@ -118,6 +134,12 @@ export function CalendarPlanGrid({ plan, onSave }: Props) {
   };
 
   const handleSave = () => {
+    // Валидация дат
+    if (!validateDates(startDate, endDate)) {
+      alert(getDateErrorMessage(startDate, endDate));
+      return;
+    }
+
     if (!(data.title &&
           data.academic_year &&
           data.group &&
@@ -234,26 +256,32 @@ function calculateCourseStats(weeks: string[]) {
   };
 }
 
-// On new date input synchronize data.start_date and state variable startDate
-// for correct save and export
-const handleStartDateChange = (e) =>
-{
-  setStartDate(e.target.value);
-  setData({...data, start_date: e.target.value});
-}
-
-const handleEndDateChange = (e) =>
-{
-  let endDate = e.target.value;
-  if (startDate > endDate)
-  {
-    alert('Дата окончания обучения не может быть раньше даты начала обучения');
-    return;
+// Обработчики изменения дат с валидацией
+const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const newStartDate = e.target.value;
+  setStartDate(newStartDate);
+  setData({...data, start_date: newStartDate});
+  
+  // Проверяем валидацию
+  if (endDate && !validateDates(newStartDate, endDate)) {
+    setDateError(getDateErrorMessage(newStartDate, endDate));
+  } else {
+    setDateError(null);
   }
-  setEndDate(endDate);
-  setData({...data, end_date: endDate});
 }
 
+const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const newEndDate = e.target.value;
+  setEndDate(newEndDate);
+  setData({...data, end_date: newEndDate});
+  
+  // Проверяем валидацию
+  if (startDate && !validateDates(startDate, newEndDate)) {
+    setDateError(getDateErrorMessage(startDate, newEndDate));
+  } else {
+    setDateError(null);
+  }
+}
 
   return (
     <div className="calendar-plan">
@@ -300,7 +328,7 @@ const handleEndDateChange = (e) =>
           <input 
             type="date" 
             value={startDate}
-            onChange={(e) => { handleStartDateChange(e); }}
+            onChange={handleStartDateChange}
           />
           <small style={{ display: 'block', marginTop: '4px', color: '#666', fontSize: '12px' }}>
             (Если выходной день - начнётся с ближайшего понедельника)
@@ -312,12 +340,27 @@ const handleEndDateChange = (e) =>
           <input 
             type="date" 
             value={endDate}
-            onChange={(e) => { handleEndDateChange(e); }}
+            onChange={handleEndDateChange}
           />
           <small style={{ display: 'block', marginTop: '4px', color: '#666', fontSize: '12px' }}>
             (Если выходной день - обучение закончится в пятницу)
           </small>
         </label>
+
+        {/* Отображение ошибки дат */}
+        {dateError && (
+          <div style={{ 
+            color: '#dc3545', 
+            fontSize: '14px', 
+            marginTop: '8px',
+            padding: '8px',
+            backgroundColor: '#f8d7da',
+            borderRadius: '4px',
+            width: '100%'
+          }}>
+            ⚠️ {dateError}
+          </div>
+        )}
 
         <label>
           Количество курсов:
@@ -421,7 +464,7 @@ const handleEndDateChange = (e) =>
               <td>{totals.gia}</td>
               <td>{totals.holidays}</td>
               <td>{totals.total}</td>
-            </tr>
+             </tr>
 
         </tbody>
       </table>
@@ -439,7 +482,11 @@ const handleEndDateChange = (e) =>
       </div>
 
       <div className="calendar-plan__actions">
-        <button onClick={() => { handleSave(); }}>
+        <button 
+          onClick={handleSave}
+          style={dateError ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+          disabled={!!dateError}
+        >
           Сохранить календарный план
         </button>
       </div>
