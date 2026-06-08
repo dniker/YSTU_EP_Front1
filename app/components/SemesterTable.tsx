@@ -65,7 +65,6 @@ export const SemesterTable = ({
 
     return (
         <>
-        <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
             <table className={table["table"]}>
                 <thead>
                 <tr>
@@ -130,7 +129,6 @@ export const SemesterTable = ({
                 </tr>
                 </tfoot>
             </table>
-        </div>
 
             {rowToDelete !== null && (
                 <ConfirmationModal

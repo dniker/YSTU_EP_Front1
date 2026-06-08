@@ -174,19 +174,19 @@ export function CalendarPlanGrid({ plan, onSave }: Props) {
     const spring = weeks.slice(23);
 
     const isTheory = (w: string) => w === '' || w === 'С';
-    const countWeeks = (v: string) => weeks.filter((w) => w === v).length;
+    const count = (v: string) => weeks.filter((w) => w === v).length;
 
     const a = autumn.filter(isTheory).length;
     const s = spring.filter(isTheory).length;
     const th = a + s;
 
-    const ex = countWeeks('С');
-    const st = countWeeks('У');
-    const ot = countWeeks('П');
-    const pr = countWeeks('Д');
-    const n = countWeeks('Н');
-    const g = countWeeks('Г');
-    const h = countWeeks('=');
+    const ex = count('С');
+    const st = count('У');
+    const ot = count('П');
+    const pr = count('Д');
+    const n = count('Н');
+    const g = count('Г');
+    const h = count('=');
 
     const sum =
       th + st + ot + pr + n + g + h;
@@ -224,19 +224,19 @@ function calculateCourseStats(weeks: string[]) {
   const spring = weeks.slice(23);
 
   const isTheory = (w: string) => w === '' || w === 'С';
-  const countWeeks = (v: string) => weeks.filter((w) => w === v).length;
+  const count = (v: string) => weeks.filter((w) => w === v).length;
 
   const theoryAutumn = autumn.filter(isTheory).length;
   const theorySpring = spring.filter(isTheory).length;
   const theoryTotal = theoryAutumn + theorySpring;
 
-  const exams = countWeeks('С');
-  const study = countWeeks('У');
-  const other = countWeeks('П');
-  const pre = countWeeks('Д');
-  const nir = countWeeks('Н');
-  const gia = countWeeks('Г');
-  const holidays = countWeeks('=');
+  const exams = count('С');
+  const study = count('У');
+  const other = count('П');
+  const pre = count('Д');
+  const nir = count('Н');
+  const gia = count('Г');
+  const holidays = count('=');
 
   const total =
     theoryTotal + study + other + pre + nir + gia + holidays;
@@ -373,103 +373,101 @@ const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         </label>
       </div>
 
-      {/* ТАБЛИЦА - ОБЕРНУТА В DIV ДЛЯ ГОРИЗОНТАЛЬНОЙ ПРОКРУТКИ */}
-      <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
-        <table className="calendar-plan__table" style={{ minWidth: '1200px' }}>
-          <thead>
-            <tr>
-              <th rowSpan={2}>Курс</th>
-              <th colSpan={WEEK_AUTUMN}>Осенний семестр</th>
-              <th colSpan={WEEK_SPRING}>Весенний семестр</th>
-              <th colSpan={3}>Теория</th>
-              <th rowSpan={2}>Экз.</th>
-              <th rowSpan={2}>Уч.</th>
-              <th rowSpan={2}>Друг.</th>
-              <th rowSpan={2}>Предд.</th>
-              <th rowSpan={2}>НИР</th>
-              <th rowSpan={2}>ГИА</th>
-              <th rowSpan={2}>Каник.</th>
-              <th rowSpan={2}>Всего</th>
-            </tr>
-            <tr>
-              {Array.from({ length: WEEK_COUNT }, (_, i) => (
-                <th key={i} title={weekDateRanges[i]} style={{ padding: '5px', writingMode: 'sideways-lr' }}>
-                  <div style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.1', letterSpacing: '0.5px', fontSize: '12px' }}>
-                    {weekDateRanges[i]}
-                  </div>
-                </th>
+      {/* ТАБЛИЦА */}
+      <table className="calendar-plan__table">
+        <thead>
+          <tr>
+            <th rowSpan={2}>Курс</th>
+            <th colSpan={WEEK_AUTUMN}>Осенний семестр</th>
+            <th colSpan={WEEK_SPRING}>Весенний семестр</th>
+            <th colSpan={3}>Теория</th>
+            <th rowSpan={2}>Экз.</th>
+            <th rowSpan={2}>Уч.</th>
+            <th rowSpan={2}>Друг.</th>
+            <th rowSpan={2}>Предд.</th>
+            <th rowSpan={2}>НИР</th>
+            <th rowSpan={2}>ГИА</th>
+            <th rowSpan={2}>Каник.</th>
+            <th rowSpan={2}>Всего</th>
+          </tr>
+          <tr>
+            {Array.from({ length: WEEK_COUNT }, (_, i) => (
+              <th key={i} title={weekDateRanges[i]} style={{ padding: '5px', writingMode: 'sideways-lr' }}>
+                <div style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '1.1', letterSpacing: '0.5px', fontSize: '12px' }}>
+                  {weekDateRanges[i]}
+                </div>
+              </th>
+            ))}
+            <th>О</th><th>В</th><th>Σ</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {courses.map((c, ci) => {
+            const autumn = c.weeks.slice(0, WEEK_AUTUMN);
+            const spring = c.weeks.slice(WEEK_AUTUMN);
+
+            const theoryO = count(autumn, ['', 'С']);
+            const theoryV = count(spring, ['', 'С']);
+
+            return (
+              <tr key={c.course}>
+                <td>{c.course}</td>
+                {c.weeks.map((w, wi) => {
+                  const isInvalidWeek = w && !isAllowedWeekCode(w);
+                  return (
+                    <td key={wi}>
+                      <input
+                        className={`calendar-plan__week-input${
+                          isInvalidWeek ? ' calendar-plan__week-input_invalid' : ''
+                        }`}
+                        value={w}
+                        maxLength={1}
+                        onChange={(e) =>
+                          updateWeek(ci, wi, e.target.value.toUpperCase())
+                        }
+                      />
+                    </td>
+                  );
+                })}
+                <td className="calendar-plan__summary">{theoryO}</td>
+                <td className="calendar-plan__summary">{theoryV}</td>
+                <td className="calendar-plan__summary">{theoryO + theoryV}</td>
+                <td>{count(c.weeks, ['С'])}</td>
+                <td>{count(c.weeks, ['У'])}</td>
+                <td>{count(c.weeks, ['П'])}</td>
+                <td>{count(c.weeks, ['Д'])}</td>
+                <td>{count(c.weeks, ['Н'])}</td>
+                <td>{count(c.weeks, ['Г'])}</td>
+                <td>{count(c.weeks, ['='])}</td>
+                <td className="calendar-plan__summary">{WEEK_COUNT}</td>
+              </tr>
+            );
+          })}
+
+           <tr style={{ fontWeight: 'bold', background: '#f3f3f3' }}>
+              <td>Итого</td>
+
+              {/* пропускаем 52 недели */}
+              {Array.from({ length: WEEK_COUNT }).map((_, i) => (
+                <td key={i}></td>
               ))}
-              <th>О</th><th>В</th><th>Σ</th>
-            </tr>
-          </thead>
 
-          <tbody>
-            {courses.map((c, ci) => {
-              const autumn = c.weeks.slice(0, WEEK_AUTUMN);
-              const spring = c.weeks.slice(WEEK_AUTUMN);
+              <td>{totals.tAutumn}</td>
+              <td>{totals.tSpring}</td>
+              <td>{totals.tTotal}</td>
+              <td>{totals.exams}</td>
+              <td>{totals.study}</td>
+              <td>{totals.other}</td>
+              <td>{totals.pre}</td>
+              <td>{totals.nir}</td>
+              <td>{totals.gia}</td>
+              <td>{totals.holidays}</td>
+              <td>{totals.total}</td>
+             </tr>
 
-              const theoryO = count(autumn, ['', 'С']);
-              const theoryV = count(spring, ['', 'С']);
-
-              return (
-                <tr key={c.course}>
-                  <td>{c.course}</td>
-                  {c.weeks.map((w, wi) => {
-                    const isInvalidWeek = w && !isAllowedWeekCode(w);
-                    return (
-                      <td key={wi}>
-                        <input
-                          className={`calendar-plan__week-input${
-                            isInvalidWeek ? ' calendar-plan__week-input_invalid' : ''
-                          }`}
-                          value={w}
-                          maxLength={1}
-                          onChange={(e) =>
-                            updateWeek(ci, wi, e.target.value.toUpperCase())
-                          }
-                        />
-                      </td>
-                    );
-                  })}
-                  <td className="calendar-plan__summary">{theoryO}</td>
-                  <td className="calendar-plan__summary">{theoryV}</td>
-                  <td className="calendar-plan__summary">{theoryO + theoryV}</td>
-                  <td>{count(c.weeks, ['С'])}</td>
-                  <td>{count(c.weeks, ['У'])}</td>
-                  <td>{count(c.weeks, ['П'])}</td>
-                  <td>{count(c.weeks, ['Д'])}</td>
-                  <td>{count(c.weeks, ['Н'])}</td>
-                  <td>{count(c.weeks, ['Г'])}</td>
-                  <td>{count(c.weeks, ['='])}</td>
-                  <td className="calendar-plan__summary">{WEEK_COUNT}</td>
-                </tr>
-              );
-            })}
-
-             <tr style={{ fontWeight: 'bold', background: '#f3f3f3' }}>
-                <td>Итого</td>
-
-                {/* пропускаем 52 недели */}
-                {Array.from({ length: WEEK_COUNT }).map((_, i) => (
-                  <td key={i}></td>
-                ))}
-
-                <td>{totals.tAutumn}</td>
-                <td>{totals.tSpring}</td>
-                <td>{totals.tTotal}</td>
-                <td>{totals.exams}</td>
-                <td>{totals.study}</td>
-                <td>{totals.other}</td>
-                <td>{totals.pre}</td>
-                <td>{totals.nir}</td>
-                <td>{totals.gia}</td>
-                <td>{totals.holidays}</td>
-                <td>{totals.total}</td>
-                </tr>
-
-          </tbody>
-        </table>
-      </div>
+        </tbody>
+      </table>
 
       {/* ЛЕГЕНДА */}
       <div className="calendar-plan__legend">
