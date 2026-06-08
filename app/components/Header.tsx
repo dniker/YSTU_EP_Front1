@@ -7,21 +7,23 @@ import { ReferenceForm } from './ReferenceForm'
 interface HeaderProps {
 	onNewOpenItemClick: () => void
 	onSaveItemClick: () => void
-	onExportExcelClick: () => void // <-- добавили
-	onExportPdfClick: () => void
+	onExportEducationalPlanExcelClick: () => void // <-- добавили
+	onExportEducationalPlanPdfClick: () => void
 	onToggleCompetenceMatrix: () => void
 	showCompetenceMatrix: boolean
 	directionInfo?: string
+	onExportIndicatorsTableExcelClick: () => void
 }
 
 export const Header = ({
 	onNewOpenItemClick,
 	onSaveItemClick,
-	onExportExcelClick, // <-- добавили
-	onExportPdfClick,
+	onExportEducationalPlanExcelClick: onExportEducationalPlanExcelClick, // <-- добавили
+	onExportEducationalPlanPdfClick: onExportEducationalPlanPdfClick,
 	onToggleCompetenceMatrix,
 	showCompetenceMatrix,
 	directionInfo,
+	onExportIndicatorsTableExcelClick: onExportIndicatorsTableExcelClick
 }: HeaderProps) => {
 	const [showReferences, setShowReferences] = useState(false)
 	const [isFileMenuHovered, setIsFileMenuHovered] = useState(false)
@@ -50,8 +52,8 @@ export const Header = ({
 								<button onClick={onSaveItemClick}>Сохранить</button>
 
 								{/* <-- исправили: вызываем проп */}
-								<button onClick={onExportExcelClick}>Экспорт в Excel</button>
-								<button onClick={onExportPdfClick}>Экспорт в PDF</button>
+								<button onClick={onExportEducationalPlanExcelClick}>Экспорт в Excel</button>
+								<button onClick={onExportEducationalPlanPdfClick}>Экспорт в PDF</button>
 							</div>
 						)}
 					</div>
@@ -75,6 +77,20 @@ export const Header = ({
 					<button onClick={() => setShowReferences(!showReferences)}>
 						Справочники
 					</button>
+
+					<div
+						className={header['file-menu-container']}
+						onMouseEnter={() => setIsFileMenuHovered(true)}
+						onMouseLeave={() => setIsFileMenuHovered(false)}
+					>
+						<button>Индикаторы</button>
+
+						{isFileMenuHovered && (
+							<div className={header['file-menu']}>
+								<button onClick={onExportIndicatorsTableExcelClick}>Экспорт в Excel</button>
+							</div>
+						)}
+					</div>
 				</div>
 			</div>
 
