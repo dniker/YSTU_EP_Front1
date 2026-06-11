@@ -492,7 +492,16 @@ const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       </div>
 
       <div className="calendar-plan__actions">
-          <button onClick={() => exportCalendarPlan({ data })}>
+          <button 
+            onClick={() => {
+              if (!dateError) {
+                exportCalendarPlan({ data });
+              }
+            }}
+            style={dateError ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+            disabled={!!dateError}
+            title={dateError || "Экспорт в Excel"}
+          >
             Экспорт в Excel
           </button>
       </div>
