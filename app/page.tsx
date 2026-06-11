@@ -28,6 +28,7 @@ import { useFileOperations } from '@/app/hooks/useFileOperations'
 import { useSaveMap } from '@/app/hooks/useSaveMap'
 import { useDownloadMap } from '@/app/hooks/useDownloadMap'
 import { useStudyPlanPdf } from '@/app/hooks/useStudyPlanPdf'
+import { useDownloadIndicatorsTable } from '@/app/hooks/useIndicatorsTable'
 import {
 	Discipline,
 	DirectionData,
@@ -74,9 +75,13 @@ const Home = () => {
 
 	const { alertMessage, showAlert, closeAlert } = useAlert()
 
-	const { downloadExcel, isDownloading: isExporting } =
+	const { downloadExcel: downloadEducationalPlanExcel, isDownloading: isExporting } =
 		useDownloadMap(showAlert)
-	const { downloadPdf, isGeneratingPdf } = useStudyPlanPdf(showAlert)
+	const { downloadPdf: downloadEducationalPlanPdf, isGeneratingPdf } = useStudyPlanPdf(showAlert)
+
+	const { downloadExcel: downloadIndicatorsTableExcel,
+		    isDownloading: isIndicatorsTableExcelDownloading } =
+			useDownloadIndicatorsTable(showAlert);
 
 	const { handleDragStart, handleDrop } = useDragAndDrop(
 		rows,
@@ -331,7 +336,7 @@ const Home = () => {
 			return
 		}
 
-		downloadPdf(rows, currentDirection)
+		downloadEducationalPlanPdf(rows, currentDirection)
 	}
 
 	const handleSaveMapInfo = () => {
@@ -360,8 +365,8 @@ const Home = () => {
 			<Header
 				onNewOpenItemClick={openInitialModal}
 				onSaveItemClick={handleSaveClick}
-				onExportExcelClick={() => downloadExcel(currentDirection)}
-				onExportPdfClick={handleExportPdf}
+				onExportEducationalPlanExcelClick={() => downloadEducationalPlanExcel(currentDirection)}
+				onExportEducationalPlanPdfClick={handleExportPdf}
 				onToggleCompetenceMatrix={() => setShowCompetenceMatrix(!showCompetenceMatrix)}
 				showCompetenceMatrix={showCompetenceMatrix}
 				directionInfo={
@@ -369,6 +374,7 @@ const Home = () => {
 						? `${currentDirection.name}, ${currentDirection.level}, ${currentDirection.form}, ${currentDirection.semesters} сем.`
 						: undefined
 				}
+				onExportIndicatorsTableExcelClick={() => downloadIndicatorsTableExcel(currentDirection)}
 			/>
 
 			<div className={mainContent['main-content']}>
